@@ -2,8 +2,9 @@ services:
   oracle:
     image: gvenzl/oracle-xe:21-slim
     container_name: ${ORACLE_CONTAINER_NAME}
+    restart: unless-stopped
     ports:
-      - "1521:1521"
+      - "127.0.0.1:1521:1521"
     environment:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD}
       APP_USER: ${DB_USERNAME}
@@ -18,6 +19,24 @@ services:
       timeout: 5s
       retries: 10
       start_period: 40s
+
+  spring:
+    build:
+      context: .
+    image: ${SPRING_IMAGE:-backend-spring:local}
+    container_name: ${SPRING_CONTAINER_NAME}
+    restart: unless-stopped
+    depends_on:
+      oracle:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: ${SERVER_PORT}
+      DB_URL: ${DOCKER_DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      TZ: ${TZ}
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
 
 volumes:
   oracle-data:
