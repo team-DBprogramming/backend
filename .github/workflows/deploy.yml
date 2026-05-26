@@ -1,0 +1,83 @@
+name: Deploy backend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGION: asia-northeast3
+  ARTIFACT_REPOSITORY: backend
+  IMAGE_NAME: spring-backend
+  DEPLOY_PATH: /opt/app/backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
+
+      - name: Build Docker image
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$ARTIFACT_REPOSITORY/$IMAGE_NAME"
+          docker build \
+            -t "$IMAGE:${{ github.sha }}" \
+            -t "$IMAGE:latest" \
+            .
+
+      - name: Push Docker image
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$ARTIFACT_REPOSITORY/$IMAGE_NAME"
+          docker push "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:latest"
+
+      - name: Sync deployment files to Compute Engine
+        run: |
+          gcloud compute ssh "${{ vars.GCE_INSTANCE }}" \
+            --zone "${{ vars.GCE_ZONE }}" \
+            --quiet \
+            --command "mkdir -p '$DEPLOY_PATH/src/main/resources'"
+
+          gcloud compute scp docker-compose.yml \
+            "${{ vars.GCE_INSTANCE }}:$DEPLOY_PATH/docker-compose.yml" \
+            --zone "${{ vars.GCE_ZONE }}" \
+            --quiet
+
+          gcloud compute scp --recurse src/main/resources/db \
+            "${{ vars.GCE_INSTANCE }}:$DEPLOY_PATH/src/main/resources/" \
+            --zone "${{ vars.GCE_ZONE }}" \
+            --quiet
+
+      - name: Deploy on Compute Engine
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$ARTIFACT_REPOSITORY/$IMAGE_NAME"
+          gcloud compute ssh "${{ vars.GCE_INSTANCE }}" \
+            --zone "${{ vars.GCE_ZONE }}" \
+            --quiet \
+            --command "
+              set -e
+              cd '$DEPLOY_PATH'
+              gcloud auth configure-docker '$REGION-docker.pkg.dev' --quiet
+              SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose pull spring
+              SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose up -d --no-build spring
+              docker image prune -f
+            "
