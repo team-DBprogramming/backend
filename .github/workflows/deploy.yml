@@ -55,7 +55,11 @@ jobs:
           gcloud compute ssh "${{ vars.GCE_INSTANCE }}" \
             --zone "${{ vars.GCE_ZONE }}" \
             --quiet \
-            --command "mkdir -p '$DEPLOY_PATH/src/main/resources'"
+            --command "
+              set -e
+              sudo mkdir -p '$DEPLOY_PATH/src/main/resources'
+              sudo chown -R \"\$(whoami):\$(id -gn)\" '$DEPLOY_PATH'
+            "
 
           gcloud compute scp docker-compose.yml \
             "${{ vars.GCE_INSTANCE }}:$DEPLOY_PATH/docker-compose.yml" \
