@@ -80,8 +80,8 @@ jobs:
             --command "
               set -e
               cd '$DEPLOY_PATH'
-              gcloud auth configure-docker '$REGION-docker.pkg.dev' --quiet
-              SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose pull spring
-              SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose up -d --no-build spring
-              docker image prune -f
+              gcloud auth print-access-token | sudo docker login -u oauth2accesstoken --password-stdin 'https://$REGION-docker.pkg.dev'
+              sudo env SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose pull spring
+              sudo env SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose up -d --no-build spring
+              sudo docker image prune -f
             "
