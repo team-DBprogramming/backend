@@ -56,18 +56,27 @@ public class JwtTokenProvider {
         refreshExpiresAt);
   }
 
-  public void validateAccessToken(String token) {
+  public AccessToken createAccessToken(Long userId, String loginId, String role) {
+    Instant now = clock.instant();
+    Instant accessExpiresAt = now.plus(accessTokenTtl);
+    return new AccessToken(
+        createToken(userId, loginId, role, "access", now, accessExpiresAt), accessExpiresAt);
+  }
+
+  public TokenClaims validateAccessToken(String token) {
     Map<String, Object> claims = parseAndValidate(token);
     if (!"access".equals(claims.get("typ"))) {
       throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
     }
+    return toTokenClaims(claims);
   }
 
-  public void validateRefreshToken(String token) {
+  public TokenClaims validateRefreshToken(String token) {
     Map<String, Object> claims = parseAndValidate(token);
     if (!"refresh".equals(claims.get("typ"))) {
       throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
     }
+    return toTokenClaims(claims);
   }
 
   public String hashToken(String token) {
@@ -123,6 +132,17 @@ public class JwtTokenProvider {
       return claims;
     } catch (AuthHandler e) {
       throw e;
+    } catch (Exception e) {
+      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
+    }
+  }
+
+  private TokenClaims toTokenClaims(Map<String, Object> claims) {
+    try {
+      return new TokenClaims(
+          Long.valueOf(String.valueOf(claims.get("sub"))),
+          String.valueOf(claims.get("loginId")),
+          String.valueOf(claims.get("role")));
     } catch (Exception e) {
       throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
     }

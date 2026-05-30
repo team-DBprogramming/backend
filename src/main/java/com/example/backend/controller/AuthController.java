@@ -2,6 +2,7 @@ package com.example.backend.controller;
 
 import com.example.backend.apiPayload.ApiResponse;
 import com.example.backend.apiPayload.code.status.SuccessStatus;
+import com.example.backend.dto.auth.AccessTokenResponse;
 import com.example.backend.dto.auth.LoginRequest;
 import com.example.backend.dto.auth.LoginResponse;
 import com.example.backend.dto.auth.LogoutRequest;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 public class AuthController {
 
   private final AuthService authService;
@@ -33,5 +34,10 @@ public class AuthController {
       @RequestBody LogoutRequest request) {
     authService.logout(authorization, request);
     return ApiResponse.of(SuccessStatus.AUTH_LOGOUT, null);
+  }
+
+  @PostMapping("/token/refresh")
+  public ApiResponse<AccessTokenResponse> reissue(@RequestBody LogoutRequest request) {
+    return ApiResponse.of(SuccessStatus.AUTH_REISSUE, authService.reissueAccessToken(request));
   }
 }

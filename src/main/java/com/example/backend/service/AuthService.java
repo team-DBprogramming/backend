@@ -2,6 +2,7 @@ package com.example.backend.service;
 
 import com.example.backend.apiPayload.code.status.ErrorStatus;
 import com.example.backend.apiPayload.exception.handler.AuthHandler;
+import com.example.backend.dto.auth.AccessTokenResponse;
 import com.example.backend.dto.auth.LoginRequest;
 import com.example.backend.dto.auth.LoginResponse;
 import com.example.backend.dto.auth.LoginResponse.UserSummary;
@@ -9,7 +10,9 @@ import com.example.backend.dto.auth.LogoutRequest;
 import com.example.backend.dto.auth.AuthUser;
 import com.example.backend.mapper.AuthMapper;
 import com.example.backend.mapper.RefreshTokenMapper;
+import com.example.backend.utils.AccessToken;
 import com.example.backend.utils.JwtTokenProvider;
+import com.example.backend.utils.TokenClaims;
 import com.example.backend.utils.TokenPair;
 import java.time.Clock;
 import java.time.Instant;
@@ -95,6 +98,23 @@ public class AuthService {
       throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
     }
     refreshTokenMapper.revoke(tokenHash, now);
+  }
+
+  @Transactional(readOnly = true)
+  public AccessTokenResponse reissueAccessToken(LogoutRequest request) {
+    if (request == null || isBlank(request.refreshToken())) {
+      throw new AuthHandler(ErrorStatus.AUTH_MISSING_REFRESH_TOKEN);
+    }
+
+    TokenClaims claims = tokenProvider.validateRefreshToken(request.refreshToken());
+    String tokenHash = tokenProvider.hashToken(request.refreshToken());
+    if (refreshTokenMapper.countActive(tokenHash, clock.instant()) <= 0) {
+      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
+    }
+
+    AccessToken accessToken =
+        tokenProvider.createAccessToken(claims.userId(), claims.loginId(), claims.role());
+    return new AccessTokenResponse(accessToken.token(), accessToken.expiresAt());
   }
 
   private boolean matchesPhoneLastFourDigits(String password, String phone) {

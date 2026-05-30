@@ -8,6 +8,7 @@ import com.example.backend.apiPayload.exception.handler.AuthHandler;
 import com.example.backend.dto.auth.LoginRequest;
 import com.example.backend.dto.auth.LoginResponse;
 import com.example.backend.dto.auth.LogoutRequest;
+import com.example.backend.dto.auth.AccessTokenResponse;
 import com.example.backend.dto.auth.AuthUser;
 import com.example.backend.mapper.AuthMapper;
 import com.example.backend.mapper.RefreshTokenMapper;
@@ -121,6 +122,29 @@ class AuthServiceTest {
             AuthHandler.class,
             exception ->
                 assertThat(exception.getErrorReasonHttpStatus().getCode()).isEqualTo("AUTH4002"));
+  }
+
+  @Test
+  void reissueAccessTokenCreatesNewAccessTokenFromActiveRefreshToken() {
+    TokenPair tokens = tokenProvider.createTokenPair(1L, "2024123456", "STUDENT", false);
+    refreshTokenMapper.insert(
+        1L, tokenProvider.hashToken(tokens.refreshToken()), 0, tokens.refreshTokenExpiresAt());
+
+    AccessTokenResponse response = authService.reissueAccessToken(new LogoutRequest(tokens.refreshToken()));
+
+    assertThat(response.accessToken()).isNotBlank();
+    assertThat(response.accessTokenExpiresAt()).isEqualTo(Instant.parse("2026-05-30T00:30:00Z"));
+  }
+
+  @Test
+  void reissueAccessTokenRejectsRevokedOrUnknownRefreshToken() {
+    TokenPair tokens = tokenProvider.createTokenPair(1L, "2024123456", "STUDENT", false);
+
+    assertThatThrownBy(() -> authService.reissueAccessToken(new LogoutRequest(tokens.refreshToken())))
+        .isInstanceOfSatisfying(
+            AuthHandler.class,
+            exception ->
+                assertThat(exception.getErrorReasonHttpStatus().getCode()).isEqualTo("AUTH4012"));
   }
 
   private static class FakeAuthMapper implements AuthMapper {

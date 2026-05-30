@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.backend.controller.AuthController;
+import com.example.backend.dto.auth.AccessTokenResponse;
 import com.example.backend.dto.auth.LoginResponse;
 import com.example.backend.dto.auth.LoginResponse.UserSummary;
 import com.example.backend.dto.auth.LogoutRequest;
@@ -79,5 +80,27 @@ class AuthControllerTest {
         .andExpect(jsonPath("$.isSuccess").value(true))
         .andExpect(jsonPath("$.code").value("AUTH200"))
         .andExpect(jsonPath("$.message").value("로그아웃 성공"));
+  }
+
+  @Test
+  void reissueReturnsProjectApiResponseFormat() throws Exception {
+    when(authService.reissueAccessToken(any()))
+        .thenReturn(new AccessTokenResponse("new-access-token", Instant.parse("2026-05-30T00:30:00Z")));
+
+    mockMvc
+        .perform(
+            post("/api/auth/reissue")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "refreshToken": "refresh-token"
+                    }
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.isSuccess").value(true))
+        .andExpect(jsonPath("$.code").value("AUTH200"))
+        .andExpect(jsonPath("$.message").value("Access Token 재발급 성공"))
+        .andExpect(jsonPath("$.result.accessToken").value("new-access-token"));
   }
 }

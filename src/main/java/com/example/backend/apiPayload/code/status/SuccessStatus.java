@@ -13,7 +13,8 @@ public enum SuccessStatus implements BaseCode {
   _OK(HttpStatus.OK, "COMMON200", "요청에 성공했습니다."),
   _CREATED(HttpStatus.CREATED, "COMMON201", "요청이 성공적으로 생성되었습니다."),
   AUTH_LOGIN(HttpStatus.OK, "AUTH200", "로그인 성공"),
-  AUTH_LOGOUT(HttpStatus.OK, "AUTH200", "로그아웃 성공");
+  AUTH_LOGOUT(HttpStatus.OK, "AUTH200", "로그아웃 성공"),
+  AUTH_REISSUE(HttpStatus.OK, "AUTH200", "Access Token 재발급 성공");
 
   private final HttpStatus httpStatus;
   private final String code;
