@@ -22,3 +22,10 @@ springdoc:
 
 server:
   port: ${SERVER_PORT}
+
+auth:
+  jwt:
+    secret: ${JWT_SECRET:backend-local-development-secret-key-change-me}
+    access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:30m}
+    refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:1d}
+    remember-me-refresh-token-ttl: ${JWT_REMEMBER_ME_REFRESH_TOKEN_TTL:30d}

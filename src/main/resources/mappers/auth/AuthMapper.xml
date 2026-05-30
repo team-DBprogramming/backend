@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.AuthMapper">
+  <resultMap id="AuthUserResultMap" type="com.example.backend.dto.auth.AuthUser">
+    <id property="userId" column="user_id" />
+    <result property="loginId" column="login_id" />
+    <result property="role" column="role" />
+    <result property="phone" column="phone" />
+    <result property="active" column="is_active" />
+    <result property="name" column="user_name" />
+    <result property="department" column="department" />
+  </resultMap>
+
+  <select id="findByLoginId" resultMap="AuthUserResultMap">
+    SELECT
+      ua.user_id,
+      ua.login_id,
+      ua.role,
+      ua.phone,
+      ua.is_active,
+      COALESCE(s.name, p.name) AS user_name,
+      d.dept_code AS department
+    FROM user_account ua
+    LEFT JOIN student s ON s.user_id = ua.user_id
+    LEFT JOIN professor p ON p.user_id = ua.user_id
+    LEFT JOIN department d ON d.dept_id = COALESCE(s.dept_id, p.dept_id)
+    WHERE ua.login_id = #{loginId}
+  </select>
+
+  <update id="updateLastLoginAt">
+    UPDATE user_account
+    SET last_login_at = #{lastLoginAt}
+    WHERE user_id = #{userId}
+  </update>
+</mapper>

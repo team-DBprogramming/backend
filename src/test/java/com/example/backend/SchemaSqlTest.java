@@ -29,5 +29,9 @@ class SchemaSqlTest {
     assertThat(schema).contains("sender_user_id number(19)");
     assertThat(schema).contains("target_section_id number(19)");
     assertThat(schema).contains("idx_course_section_professor_semester");
+    assertThat(schema).contains("create table refresh_token");
+    assertThat(schema).contains("token_hash varchar2(255) not null");
+    assertThat(schema).contains("remember_me number(1) default 0 not null");
+    assertThat(schema).contains("revoked_at timestamp");
   }
 }
