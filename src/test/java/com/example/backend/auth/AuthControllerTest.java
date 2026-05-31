@@ -42,7 +42,7 @@ class AuthControllerTest {
 
     mockMvc
         .perform(
-            post("/api/auth/login")
+            post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -67,7 +67,7 @@ class AuthControllerTest {
 
     mockMvc
         .perform(
-            post("/api/auth/logout")
+            post("/auth/logout")
                 .header("Authorization", "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
@@ -89,7 +89,7 @@ class AuthControllerTest {
 
     mockMvc
         .perform(
-            post("/api/auth/reissue")
+            post("/auth/token/refresh")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """

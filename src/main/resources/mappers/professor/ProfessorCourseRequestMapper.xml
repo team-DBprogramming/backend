@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.ProfessorCourseRequestMapper">
+  <resultMap id="CourseRequestInfoResultMap" type="com.example.backend.dto.professor.ProfessorCourseRequestInfo">
+    <constructor>
+      <arg column="request_pk" javaType="java.lang.Long" />
+      <arg column="request_id" javaType="java.lang.String" />
+      <arg column="status" javaType="java.lang.String" />
+      <arg column="student_user_id" javaType="java.lang.Long" />
+      <arg column="professor_user_id" javaType="java.lang.Long" />
+      <arg column="section_id" javaType="java.lang.Long" />
+      <arg column="course_name" javaType="java.lang.String" />
+    </constructor>
+  </resultMap>
+
+  <resultMap id="CourseRequestSummaryResultMap" type="com.example.backend.dto.professor.CourseRequestSummary">
+    <constructor>
+      <arg column="course_name" javaType="java.lang.String" />
+      <arg column="course_id" javaType="java.lang.String" />
+      <arg column="division" javaType="java.lang.String" />
+      <arg column="semester" javaType="java.lang.String" />
+      <arg column="total_students" javaType="_int" />
+      <arg column="request_count" javaType="_int" />
+    </constructor>
+  </resultMap>
+
+  <resultMap id="CourseRequestItemResultMap" type="com.example.backend.dto.professor.CourseRequestItem">
+    <constructor>
+      <arg column="request_id" javaType="java.lang.String" />
+      <arg column="student_id" javaType="java.lang.String" />
+      <arg column="name" javaType="java.lang.String" />
+      <arg column="grade" javaType="_int" />
+      <arg column="major" javaType="java.lang.String" />
+      <arg column="created_at" javaType="java.lang.String" />
+      <arg column="reason" javaType="java.lang.String" />
+    </constructor>
+  </resultMap>
+
+  <select id="findRequestSummary" resultMap="CourseRequestSummaryResultMap">
+    SELECT
+      c.course_name,
+      c.course_code AS course_id,
+      MIN(cs.section_no) || '분반' AS division,
+      TO_CHAR(sm.year) || '-' ||
+        CASE sm.term
+          WHEN 'SPRING' THEN '1'
+          WHEN 'FALL' THEN '2'
+          ELSE sm.term
+        END || '학기' AS semester,
+      COALESCE(SUM(cs.enrolled_count), 0) AS total_students,
+      (
+        SELECT COUNT(*)
+        FROM course_request cr
+        JOIN course_section rcs ON rcs.section_id = cr.section_id
+        JOIN course rc ON rc.course_id = rcs.course_id
+        JOIN semester rsm ON rsm.semester_id = rcs.semester_id
+        JOIN professor rp ON rp.professor_id = rcs.professor_id
+        WHERE rp.user_id = #{professorUserId}
+          AND rc.course_code = #{courseId}
+          AND rcs.status != 'CANCELLED'
+          AND rsm.is_current = 1
+          AND cr.status = 'PENDING'
+      ) AS request_count
+    FROM professor p
+    JOIN course_section cs ON cs.professor_id = p.professor_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    WHERE p.user_id = #{professorUserId}
+      AND c.course_code = #{courseId}
+      AND cs.status != 'CANCELLED'
+      AND sm.is_current = 1
+    GROUP BY c.course_name, c.course_code, sm.year, sm.term
+  </select>
+
+  <select id="findPendingRequests" resultMap="CourseRequestItemResultMap">
+    SELECT
+      request_id,
+      student_id,
+      name,
+      grade,
+      major,
+      created_at,
+      reason
+    FROM (
+      SELECT
+        TO_CHAR(cr.request_id) AS request_id,
+        ua.login_id AS student_id,
+        s.name,
+        s.year_level AS grade,
+        d.dept_name AS major,
+        TO_CHAR(cr.requested_at, 'YYYY-MM-DD HH24:MI') AS created_at,
+        DBMS_LOB.SUBSTR(cr.reason, 4000, 1) AS reason,
+        ROW_NUMBER() OVER (ORDER BY cr.requested_at DESC, cr.request_id DESC) AS row_num
+      FROM course_request cr
+      JOIN student s ON s.student_id = cr.student_id
+      JOIN user_account ua ON ua.user_id = s.user_id
+      JOIN department d ON d.dept_id = s.dept_id
+      JOIN course_section cs ON cs.section_id = cr.section_id
+      JOIN course c ON c.course_id = cs.course_id
+      JOIN semester sm ON sm.semester_id = cs.semester_id
+      JOIN professor p ON p.professor_id = cs.professor_id
+      WHERE p.user_id = #{professorUserId}
+        AND c.course_code = #{courseId}
+        AND cs.status != 'CANCELLED'
+        AND sm.is_current = 1
+        AND cr.status = 'PENDING'
+    )
+    WHERE row_num &gt; #{offset}
+      AND row_num &lt;= #{offset} + #{size}
+    ORDER BY row_num
+  </select>
+
+  <select id="findRequestForProfessor" resultMap="CourseRequestInfoResultMap">
+    SELECT
+      cr.request_id AS request_pk,
+      TO_CHAR(cr.request_id) AS request_id,
+      cr.status,
+      su.user_id AS student_user_id,
+      pu.user_id AS professor_user_id,
+      cs.section_id,
+      c.course_name
+    FROM course_request cr
+    JOIN student s ON s.student_id = cr.student_id
+    JOIN user_account su ON su.user_id = s.user_id
+    JOIN course_section cs ON cs.section_id = cr.section_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN professor p ON p.professor_id = cs.professor_id
+    JOIN user_account pu ON pu.user_id = p.user_id
+    WHERE pu.user_id = #{professorUserId}
+      AND c.course_code = #{courseId}
+      AND TO_CHAR(cr.request_id) = #{requestId}
+  </select>
+
+  <update id="updatePendingRequestStatus">
+    UPDATE course_request cr
+    SET
+      cr.status = #{status},
+      cr.processed_at = #{processedAt},
+      cr.processed_by_professor_id = (
+        SELECT p.professor_id
+        FROM professor p
+        WHERE p.user_id = #{professorUserId}
+      )
+    WHERE cr.status = 'PENDING'
+      AND TO_CHAR(cr.request_id) = #{requestId}
+      AND EXISTS (
+        SELECT 1
+        FROM course_section cs
+        JOIN course c ON c.course_id = cs.course_id
+        JOIN professor p ON p.professor_id = cs.professor_id
+        WHERE cs.section_id = cr.section_id
+          AND c.course_code = #{courseId}
+          AND p.user_id = #{professorUserId}
+      )
+  </update>
+
+  <insert id="insertResultNotification">
+    INSERT INTO notification (
+      notification_id,
+      recipient_user_id,
+      sender_user_id,
+      target_section_id,
+      target_request_id,
+      title,
+      body,
+      type,
+      is_read,
+      created_at
+    ) VALUES (
+      (SELECT COALESCE(MAX(notification_id), 0) + 1 FROM notification),
+      #{recipientUserId},
+      #{senderUserId},
+      #{targetSectionId},
+      #{targetRequestId},
+      #{title},
+      #{body},
+      #{type},
+      0,
+      #{createdAt}
+    )
+  </insert>
+</mapper>
