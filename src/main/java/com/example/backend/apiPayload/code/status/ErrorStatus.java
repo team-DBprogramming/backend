@@ -24,6 +24,8 @@ public enum ErrorStatus implements BaseErrorCode {
       HttpStatus.BAD_REQUEST, "PROFESSOR4001", "이미 승인 또는 거절 처리가 완료된 수강 요청입니다."),
   PROFESSOR_REQUEST_INVALID_STATUS(
       HttpStatus.BAD_REQUEST, "PROFESSOR4002", "수강 요청 상태는 APPROVED 또는 REJECTED만 가능합니다."),
+  PROFESSOR_EXPORT_INVALID_FORMAT(
+      HttpStatus.BAD_REQUEST, "PROFESSOR4003", "다운로드 형식은 xlsx 또는 csv만 가능합니다."),
   PROFESSOR_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "PROFESSOR4041", "수강 요청을 찾을 수 없습니다."),
   PROFESSOR_FORBIDDEN(HttpStatus.FORBIDDEN, "PROFESSOR4031", "교수 권한이 필요합니다.");
 

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.ProfessorStudentExportMapper">
+  <resultMap id="ExportCourseResultMap" type="com.example.backend.dto.professor.ProfessorStudentExportCourse">
+    <constructor>
+      <arg column="course_name" javaType="java.lang.String" />
+      <arg column="course_id" javaType="java.lang.String" />
+      <arg column="division" javaType="java.lang.String" />
+      <arg column="semester" javaType="java.lang.String" />
+    </constructor>
+  </resultMap>
+
+  <resultMap id="ExportRowResultMap" type="com.example.backend.dto.professor.ProfessorStudentExportRow">
+    <constructor>
+      <arg column="student_id" javaType="java.lang.String" />
+      <arg column="name" javaType="java.lang.String" />
+      <arg column="grade" javaType="_int" />
+      <arg column="major" javaType="java.lang.String" />
+      <arg column="status" javaType="java.lang.String" />
+      <arg column="enrolled_at" javaType="java.lang.String" />
+      <arg column="note" javaType="java.lang.String" />
+    </constructor>
+  </resultMap>
+
+  <select id="findCourse" resultMap="ExportCourseResultMap">
+    SELECT
+      c.course_name,
+      c.course_code AS course_id,
+      MIN(cs.section_no) || '분반' AS division,
+      TO_CHAR(sm.year) || '-' ||
+        CASE sm.term
+          WHEN 'SPRING' THEN '1'
+          WHEN 'FALL' THEN '2'
+          ELSE sm.term
+        END || '학기' AS semester
+    FROM professor p
+    JOIN course_section cs ON cs.professor_id = p.professor_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    WHERE p.user_id = #{professorUserId}
+      AND c.course_code = #{courseId}
+      AND cs.status != 'CANCELLED'
+      AND sm.is_current = 1
+    GROUP BY c.course_name, c.course_code, sm.year, sm.term
+  </select>
+
+  <select id="findStudents" resultMap="ExportRowResultMap">
+    SELECT
+      ua.login_id AS student_id,
+      s.name,
+      s.year_level AS grade,
+      d.dept_name AS major,
+      e.status,
+      TO_CHAR(e.enrolled_at, 'YYYY-MM-DD HH24:MI') AS enrolled_at,
+      DBMS_LOB.SUBSTR(e.professor_note, 4000, 1) AS note
+    FROM professor p
+    JOIN course_section cs ON cs.professor_id = p.professor_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    JOIN enrollment e ON e.section_id = cs.section_id
+    JOIN student s ON s.student_id = e.student_id
+    JOIN user_account ua ON ua.user_id = s.user_id
+    JOIN department d ON d.dept_id = s.dept_id
+    WHERE p.user_id = #{professorUserId}
+      AND c.course_code = #{courseId}
+      AND cs.status != 'CANCELLED'
+      AND sm.is_current = 1
+      AND e.status = 'ENROLLED'
+      AND (
+        #{keyword} IS NULL
+        OR LOWER(ua.login_id) LIKE '%' || #{keyword} || '%'
+        OR LOWER(s.name) LIKE '%' || #{keyword} || '%'
+      )
+      AND (#{grade} IS NULL OR s.year_level = #{grade})
+      AND (
+        #{major} IS NULL
+        OR LOWER(d.dept_name) LIKE '%' || #{major} || '%'
+        OR LOWER(d.dept_code) LIKE '%' || #{major} || '%'
+      )
+    ORDER BY ua.login_id
+  </select>
+</mapper>
