@@ -209,6 +209,39 @@ public final class OpenApiExamples {
       }
       """;
 
+  public static final String PROFESSOR_REVIEWS_RESPONSE =
+      """
+      {
+        "isSuccess": true,
+        "code": "PROFESSOR200",
+        "message": "강의 평가 조회 성공",
+        "result": {
+          "summary": {
+            "avgRating": 4.4,
+            "participationRate": 82,
+            "participantCount": 44
+          },
+          "itemAverages": {
+            "overall": 4.6,
+            "content": 4.5,
+            "workload": 3.8,
+            "kindness": 4.7
+          },
+          "reviews": [
+            {
+              "reviewId": "REV_001",
+              "rating": 5.0,
+              "createdAt": "2026.05.10",
+              "pros": "실습 위주 수업이라 이해가 잘 되었어요.",
+              "cons": "과제가 조금 많았지만 실력 향상에는 도움이 되었습니다.",
+              "tip": "예습하고 오면 수업 따라가기 훨씬 쉬워요.",
+              "writer": "익명"
+            }
+          ]
+        }
+      }
+      """;
+
   public static final String ERROR_RESPONSE =
       """
       {

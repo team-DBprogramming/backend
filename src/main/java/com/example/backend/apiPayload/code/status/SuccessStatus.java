@@ -19,6 +19,7 @@ public enum SuccessStatus implements BaseCode {
   PROFESSOR_DASHBOARD(HttpStatus.OK, "PROFESSOR200", "교수 대시보드 조회 성공"),
   PROFESSOR_REQUESTS(HttpStatus.OK, "PROFESSOR200", "수강 요청 조회 성공"),
   PROFESSOR_STUDENTS(HttpStatus.OK, "PROFESSOR200", "수강생 목록 조회 성공"),
+  PROFESSOR_REVIEWS(HttpStatus.OK, "PROFESSOR200", "강의 평가 조회 성공"),
   PROFESSOR_REQUEST_PROCESSED(HttpStatus.CREATED, "PROFESSOR201", "수강 요청 처리가 완료되었습니다.");
 
   private final HttpStatus httpStatus;
