@@ -4,6 +4,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
+import static com.example.backend.support.TestAuthentications.studentUser;
+import static com.example.backend.support.TestAuthentications.withStudentAuthentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,20 +16,24 @@ import com.example.backend.dto.auth.LoginResponse;
 import com.example.backend.dto.auth.LoginResponse.UserSummary;
 import com.example.backend.dto.auth.LogoutRequest;
 import com.example.backend.service.AuthService;
+import com.example.backend.utils.JwtTokenProvider;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AuthController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private AuthService authService;
+  @MockitoBean private JwtTokenProvider tokenProvider;
 
   @Test
   void loginReturnsProjectApiResponseFormat() throws Exception {
@@ -63,12 +69,12 @@ class AuthControllerTest {
 
   @Test
   void logoutReturnsProjectApiResponseFormat() throws Exception {
-    doNothing().when(authService).logout(eq("Bearer access-token"), any(LogoutRequest.class));
+    doNothing().when(authService).logout(eq(studentUser()), any(LogoutRequest.class));
 
     mockMvc
         .perform(
             post("/auth/logout")
-                .header("Authorization", "Bearer access-token")
+                .with(withStudentAuthentication())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """

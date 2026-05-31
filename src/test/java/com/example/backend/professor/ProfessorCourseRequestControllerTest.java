@@ -3,6 +3,8 @@ package com.example.backend.professor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static com.example.backend.support.TestAuthentications.professorUser;
+import static com.example.backend.support.TestAuthentications.withProfessorAuthentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -14,26 +16,30 @@ import com.example.backend.dto.professor.CourseRequestDecisionResponse;
 import com.example.backend.dto.professor.CourseRequestListResponse;
 import com.example.backend.dto.professor.CourseRequestSummary;
 import com.example.backend.service.ProfessorCourseRequestService;
+import com.example.backend.utils.JwtTokenProvider;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ProfessorCourseRequestController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ProfessorCourseRequestControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private ProfessorCourseRequestService requestService;
+  @MockitoBean private JwtTokenProvider tokenProvider;
 
   @Test
   void decideRequestReturnsCreatedResponse() throws Exception {
     when(requestService.decideRequest(
-            eq("Bearer access-token"), eq("CSE301"), eq("req-db-001"), any()))
+            eq(professorUser()), eq("CSE301"), eq("req-db-001"), any()))
         .thenReturn(
             new CourseRequestDecisionResponse(
                 "req-db-001", "APPROVED", Instant.parse("2026-05-21T22:15:30Z")));
@@ -41,7 +47,7 @@ class ProfessorCourseRequestControllerTest {
     mockMvc
         .perform(
             patch("/professors/me/courses/CSE301/requests/req-db-001")
-                .header("Authorization", "Bearer access-token")
+                .with(withProfessorAuthentication())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -60,7 +66,7 @@ class ProfessorCourseRequestControllerTest {
 
   @Test
   void getRequestsReturnsProjectApiResponseFormat() throws Exception {
-    when(requestService.getRequests(eq("Bearer access-token"), eq("CSE301"), eq(1), eq(20)))
+    when(requestService.getRequests(eq(professorUser()), eq("CSE301"), eq(1), eq(20)))
         .thenReturn(
             new CourseRequestListResponse(
                 new CourseRequestSummary("데이터베이스개론", "CSE301", "01분반", "2026-1학기", 6, 3),
@@ -77,7 +83,7 @@ class ProfessorCourseRequestControllerTest {
     mockMvc
         .perform(
             get("/professors/me/courses/CSE301/requests")
-                .header("Authorization", "Bearer access-token")
+                .with(withProfessorAuthentication())
                 .queryParam("page", "1")
                 .queryParam("size", "20"))
         .andExpect(status().isOk())

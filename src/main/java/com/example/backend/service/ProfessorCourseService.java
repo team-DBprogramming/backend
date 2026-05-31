@@ -1,16 +1,12 @@
 package com.example.backend.service;
 
-import com.example.backend.apiPayload.code.status.ErrorStatus;
-import com.example.backend.apiPayload.exception.handler.AuthHandler;
-import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
 import com.example.backend.dto.professor.ProfessorCourseItem;
 import com.example.backend.dto.professor.ProfessorCourseListResponse;
 import com.example.backend.dto.professor.ProfessorCourseListResponse.CourseItem;
 import com.example.backend.dto.professor.ProfessorCourseListResponse.Statistics;
 import com.example.backend.dto.professor.ProfessorCourseStatistics;
 import com.example.backend.mapper.ProfessorCourseMapper;
-import com.example.backend.utils.JwtTokenProvider;
-import com.example.backend.utils.TokenClaims;
+import com.example.backend.security.AuthenticatedUser;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,25 +15,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfessorCourseService {
 
   private final ProfessorCourseMapper courseMapper;
-  private final JwtTokenProvider tokenProvider;
 
-  public ProfessorCourseService(ProfessorCourseMapper courseMapper, JwtTokenProvider tokenProvider) {
+  public ProfessorCourseService(ProfessorCourseMapper courseMapper) {
     this.courseMapper = courseMapper;
-    this.tokenProvider = tokenProvider;
   }
 
   @Transactional(readOnly = true)
   public ProfessorCourseListResponse getCourses(
-      String authorizationHeader, String semester, String keyword) {
-    TokenClaims claims = validateProfessor(authorizationHeader);
+      AuthenticatedUser currentUser, String semester, String keyword) {
+    Long professorUserId = currentUser.requireProfessorUserId();
     String normalizedSemester = normalize(semester);
     String normalizedKeyword = normalize(keyword);
     List<CourseItem> courses =
-        courseMapper.findCourses(claims.userId(), normalizedSemester, normalizedKeyword).stream()
+        courseMapper.findCourses(professorUserId, normalizedSemester, normalizedKeyword).stream()
             .map(this::toCourseItem)
             .toList();
     ProfessorCourseStatistics statistics =
-        nullToEmptyStatistics(courseMapper.findStatistics(claims.userId(), normalizedSemester));
+        nullToEmptyStatistics(courseMapper.findStatistics(professorUserId, normalizedSemester));
 
     return new ProfessorCourseListResponse(
         courses,
@@ -45,18 +39,6 @@ public class ProfessorCourseService {
             intValue(statistics.getTotalCourses()),
             intValue(statistics.getTotalStudents()),
             satisfactionValue(statistics.getAvgSatisfaction())));
-  }
-
-  private TokenClaims validateProfessor(String authorizationHeader) {
-    if (isBlank(authorizationHeader) || !authorizationHeader.startsWith("Bearer ")) {
-      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
-    }
-    TokenClaims claims =
-        tokenProvider.validateAccessToken(authorizationHeader.substring("Bearer ".length()).trim());
-    if (!"PROFESSOR".equals(claims.role())) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_FORBIDDEN);
-    }
-    return claims;
   }
 
   private CourseItem toCourseItem(ProfessorCourseItem course) {

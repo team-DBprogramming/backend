@@ -1,6 +1,8 @@
 package com.example.backend.professor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.example.backend.support.TestAuthentications.professorUser;
+import static com.example.backend.support.TestAuthentications.studentUser;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
@@ -10,9 +12,7 @@ import com.example.backend.dto.professor.ProfessorDashboardSummary;
 import com.example.backend.dto.professor.ProfessorTodaySchedule;
 import com.example.backend.mapper.ProfessorDashboardMapper;
 import com.example.backend.service.ProfessorDashboardService;
-import com.example.backend.utils.JwtTokenProvider;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -25,25 +25,16 @@ class ProfessorDashboardServiceTest {
   private final Clock clock =
       Clock.fixed(Instant.parse("2026-05-30T02:00:00Z"), ZoneId.of("Asia/Seoul"));
   private FakeProfessorDashboardMapper dashboardMapper;
-  private JwtTokenProvider tokenProvider;
   private ProfessorDashboardService dashboardService;
 
   @BeforeEach
   void setUp() {
     dashboardMapper = new FakeProfessorDashboardMapper();
-    tokenProvider =
-        new JwtTokenProvider(
-            "test-secret-key-test-secret-key-test-secret-key",
-            Duration.ofMinutes(30),
-            Duration.ofDays(1),
-            Duration.ofDays(30),
-            clock);
-    dashboardService = new ProfessorDashboardService(dashboardMapper, tokenProvider, clock);
+    dashboardService = new ProfessorDashboardService(dashboardMapper, clock);
   }
 
   @Test
   void dashboardReturnsProfessorSummarySchedulesAndAssignedCourses() {
-    String accessToken = tokenProvider.createAccessToken(10L, "P1001", "PROFESSOR").token();
     dashboardMapper.summary = new ProfessorDashboardSummary(3, 73, 100, 4.5, 5);
     dashboardMapper.todaySchedules.add(
         new ProfessorTodaySchedule("CSE301", "Database", 28, "10:30", "12:00", "A 301"));
@@ -55,7 +46,7 @@ class ProfessorDashboardServiceTest {
         new ProfessorAssignedCourse("CSE401", "Database Design", "01분반", 20, 30, 4.7));
 
     ProfessorDashboardResponse response =
-        dashboardService.getDashboard("Bearer " + accessToken, "2026-1");
+        dashboardService.getDashboard(professorUser(), "2026-1");
 
     assertThat(dashboardMapper.requestedUserId).isEqualTo(10L);
     assertThat(dashboardMapper.requestedSemester).isEqualTo("2026-1");
@@ -73,12 +64,11 @@ class ProfessorDashboardServiceTest {
 
   @Test
   void dashboardUsesDashWhenSatisfactionIsMissing() {
-    String accessToken = tokenProvider.createAccessToken(10L, "P1001", "PROFESSOR").token();
     dashboardMapper.summary = new ProfessorDashboardSummary(1, 0, 30, null, 0);
     dashboardMapper.assignedCourses.add(
         new ProfessorAssignedCourse("CSE301", "Database", "01분반", 0, 30, null));
 
-    ProfessorDashboardResponse response = dashboardService.getDashboard("Bearer " + accessToken, null);
+    ProfessorDashboardResponse response = dashboardService.getDashboard(professorUser(), null);
 
     assertThat(response.avgSatisfaction()).isEqualTo("-");
     assertThat(response.assignedCourses().get(0).satisfaction()).isEqualTo("-");
@@ -86,9 +76,8 @@ class ProfessorDashboardServiceTest {
 
   @Test
   void dashboardRejectsNonProfessorAccessToken() {
-    String accessToken = tokenProvider.createAccessToken(10L, "2024123456", "STUDENT").token();
 
-    assertThatThrownBy(() -> dashboardService.getDashboard("Bearer " + accessToken, "2026-1"))
+    assertThatThrownBy(() -> dashboardService.getDashboard(studentUser(), "2026-1"))
         .isInstanceOfSatisfying(
             ProfessorHandler.class,
             exception ->
@@ -127,3 +116,4 @@ class ProfessorDashboardServiceTest {
     }
   }
 }
+

@@ -1,6 +1,8 @@
 package com.example.backend.professor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.example.backend.support.TestAuthentications.professorUser;
+import static com.example.backend.support.TestAuthentications.studentUser;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
@@ -9,9 +11,7 @@ import com.example.backend.dto.professor.ProfessorCourseListResponse;
 import com.example.backend.dto.professor.ProfessorCourseStatistics;
 import com.example.backend.mapper.ProfessorCourseMapper;
 import com.example.backend.service.ProfessorCourseService;
-import com.example.backend.utils.JwtTokenProvider;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -23,25 +23,16 @@ class ProfessorCourseServiceTest {
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-05-31T00:00:00Z"), ZoneOffset.UTC);
   private FakeProfessorCourseMapper courseMapper;
-  private JwtTokenProvider tokenProvider;
   private ProfessorCourseService courseService;
 
   @BeforeEach
   void setUp() {
     courseMapper = new FakeProfessorCourseMapper();
-    tokenProvider =
-        new JwtTokenProvider(
-            "test-secret-key-test-secret-key-test-secret-key",
-            Duration.ofMinutes(30),
-            Duration.ofDays(1),
-            Duration.ofDays(30),
-            clock);
-    courseService = new ProfessorCourseService(courseMapper, tokenProvider);
+    courseService = new ProfessorCourseService(courseMapper);
   }
 
   @Test
   void getCoursesReturnsFilteredCoursesAndUnfilteredStatistics() {
-    String accessToken = tokenProvider.createAccessToken(10L, "P1001", "PROFESSOR").token();
     courseMapper.statistics = new ProfessorCourseStatistics(4, 91, 4.5);
     courseMapper.courses.add(
         new ProfessorCourseItem(
@@ -56,7 +47,7 @@ class ProfessorCourseServiceTest {
             4.5));
 
     ProfessorCourseListResponse response =
-        courseService.getCourses("Bearer " + accessToken, "2026-1", "데이터");
+        courseService.getCourses(professorUser(), "2026-1", "데이터");
 
     assertThat(courseMapper.requestedUserId).isEqualTo(10L);
     assertThat(courseMapper.requestedSemester).isEqualTo("2026-1");
@@ -71,12 +62,11 @@ class ProfessorCourseServiceTest {
 
   @Test
   void getCoursesUsesDashWhenSatisfactionIsMissing() {
-    String accessToken = tokenProvider.createAccessToken(10L, "P1001", "PROFESSOR").token();
     courseMapper.statistics = new ProfessorCourseStatistics(1, 0, null);
     courseMapper.courses.add(
         new ProfessorCourseItem("CSE301", "데이터베이스개론", "01분반", 3, "", "", 35, 0, null));
 
-    ProfessorCourseListResponse response = courseService.getCourses("Bearer " + accessToken, null, null);
+    ProfessorCourseListResponse response = courseService.getCourses(professorUser(), null, null);
 
     assertThat(response.courses().get(0).avgSatisfaction()).isEqualTo("-");
     assertThat(response.statistics().avgSatisfaction()).isEqualTo("-");
@@ -84,9 +74,8 @@ class ProfessorCourseServiceTest {
 
   @Test
   void getCoursesRejectsStudentToken() {
-    String accessToken = tokenProvider.createAccessToken(10L, "2024123456", "STUDENT").token();
 
-    assertThatThrownBy(() -> courseService.getCourses("Bearer " + accessToken, "2026-1", null))
+    assertThatThrownBy(() -> courseService.getCourses(studentUser(), "2026-1", null))
         .isInstanceOfSatisfying(
             ProfessorHandler.class,
             exception ->
@@ -116,3 +105,4 @@ class ProfessorCourseServiceTest {
     }
   }
 }
+

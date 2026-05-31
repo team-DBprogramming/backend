@@ -1,6 +1,8 @@
 package com.example.backend.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.example.backend.support.TestAuthentications.professorUser;
+import static com.example.backend.support.TestAuthentications.studentUser;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.apiPayload.code.status.ErrorStatus;
@@ -108,7 +110,7 @@ class AuthServiceTest {
     String refreshTokenHash = tokenProvider.hashToken(tokens.refreshToken());
     refreshTokenMapper.insert(1L, refreshTokenHash, 0, tokens.refreshTokenExpiresAt());
 
-    authService.logout("Bearer " + tokens.accessToken(), new LogoutRequest(tokens.refreshToken()));
+    authService.logout(studentUser(), new LogoutRequest(tokens.refreshToken()));
 
     assertThat(refreshTokenMapper.revokedTokenHash).isEqualTo(refreshTokenHash);
   }
@@ -117,7 +119,7 @@ class AuthServiceTest {
   void logoutRejectsMissingRefreshToken() {
     TokenPair tokens = tokenProvider.createTokenPair(1L, "2024123456", "STUDENT", false);
 
-    assertThatThrownBy(() -> authService.logout("Bearer " + tokens.accessToken(), new LogoutRequest("")))
+    assertThatThrownBy(() -> authService.logout(studentUser(), new LogoutRequest("")))
         .isInstanceOfSatisfying(
             AuthHandler.class,
             exception ->
@@ -189,3 +191,4 @@ class AuthServiceTest {
     }
   }
 }
+

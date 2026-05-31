@@ -1,14 +1,12 @@
 package com.example.backend.service;
 
 import com.example.backend.apiPayload.code.status.ErrorStatus;
-import com.example.backend.apiPayload.exception.handler.AuthHandler;
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
 import com.example.backend.dto.professor.ProfessorStudentExportCourse;
 import com.example.backend.dto.professor.ProfessorStudentExportFile;
 import com.example.backend.dto.professor.ProfessorStudentExportRow;
 import com.example.backend.mapper.ProfessorStudentExportMapper;
-import com.example.backend.utils.JwtTokenProvider;
-import com.example.backend.utils.TokenClaims;
+import com.example.backend.security.AuthenticatedUser;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -28,49 +26,34 @@ public class ProfessorStudentExportService {
   private static final String CSV_CONTENT_TYPE = "text/csv;charset=UTF-8";
 
   private final ProfessorStudentExportMapper exportMapper;
-  private final JwtTokenProvider tokenProvider;
   private final Clock clock;
 
-  public ProfessorStudentExportService(
-      ProfessorStudentExportMapper exportMapper, JwtTokenProvider tokenProvider, Clock clock) {
+  public ProfessorStudentExportService(ProfessorStudentExportMapper exportMapper, Clock clock) {
     this.exportMapper = exportMapper;
-    this.tokenProvider = tokenProvider;
     this.clock = clock;
   }
 
   @Transactional(readOnly = true)
   public ProfessorStudentExportFile exportStudents(
-      String authorizationHeader,
+      AuthenticatedUser currentUser,
       String courseId,
       String format,
       String keyword,
       Integer grade,
       String major) {
-    TokenClaims claims = validateProfessor(authorizationHeader);
+    Long professorUserId = currentUser.requireProfessorUserId();
     String normalizedFormat = normalizeFormat(format);
-    ProfessorStudentExportCourse course = exportMapper.findCourse(claims.userId(), courseId);
+    ProfessorStudentExportCourse course = exportMapper.findCourse(professorUserId, courseId);
     if (course == null) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
     }
     List<ProfessorStudentExportRow> rows =
-        exportMapper.findStudents(claims.userId(), courseId, normalize(keyword), grade, normalize(major));
+        exportMapper.findStudents(professorUserId, courseId, normalize(keyword), grade, normalize(major));
     String filename = filename(course, normalizedFormat);
     byte[] bytes = "xlsx".equals(normalizedFormat) ? toXlsx(rows) : toCsv(rows);
     String contentType = "xlsx".equals(normalizedFormat) ? XLSX_CONTENT_TYPE : CSV_CONTENT_TYPE;
 
     return new ProfessorStudentExportFile(filename, contentType, bytes);
-  }
-
-  private TokenClaims validateProfessor(String authorizationHeader) {
-    if (isBlank(authorizationHeader) || !authorizationHeader.startsWith("Bearer ")) {
-      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
-    }
-    TokenClaims claims =
-        tokenProvider.validateAccessToken(authorizationHeader.substring("Bearer ".length()).trim());
-    if (!"PROFESSOR".equals(claims.role())) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_FORBIDDEN);
-    }
-    return claims;
   }
 
   private String normalizeFormat(String format) {

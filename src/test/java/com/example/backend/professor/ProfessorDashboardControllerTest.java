@@ -2,6 +2,8 @@ package com.example.backend.professor;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static com.example.backend.support.TestAuthentications.professorUser;
+import static com.example.backend.support.TestAuthentications.withProfessorAuthentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -11,23 +13,27 @@ import com.example.backend.dto.professor.ProfessorDashboardResponse;
 import com.example.backend.dto.professor.ProfessorDashboardResponse.AssignedCourseItem;
 import com.example.backend.dto.professor.ProfessorDashboardResponse.TodayScheduleItem;
 import com.example.backend.service.ProfessorDashboardService;
+import com.example.backend.utils.JwtTokenProvider;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ProfessorDashboardController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ProfessorDashboardControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private ProfessorDashboardService dashboardService;
+  @MockitoBean private JwtTokenProvider tokenProvider;
 
   @Test
   void dashboardReturnsProjectApiResponseFormat() throws Exception {
-    when(dashboardService.getDashboard(eq("Bearer access-token"), eq("2026-1")))
+    when(dashboardService.getDashboard(eq(professorUser()), eq("2026-1")))
         .thenReturn(
             new ProfessorDashboardResponse(
                 3,
@@ -45,7 +51,7 @@ class ProfessorDashboardControllerTest {
     mockMvc
         .perform(
             get("/professors/me/dashboard")
-                .header("Authorization", "Bearer access-token")
+                .with(withProfessorAuthentication())
                 .queryParam("semester", "2026-1"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.isSuccess").value(true))

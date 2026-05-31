@@ -1,6 +1,8 @@
 package com.example.backend.professor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.example.backend.support.TestAuthentications.professorUser;
+import static com.example.backend.support.TestAuthentications.studentUser;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
@@ -9,9 +11,7 @@ import com.example.backend.dto.professor.ProfessorStudentListResponse;
 import com.example.backend.dto.professor.ProfessorStudentSummary;
 import com.example.backend.mapper.ProfessorStudentMapper;
 import com.example.backend.service.ProfessorStudentService;
-import com.example.backend.utils.JwtTokenProvider;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -23,25 +23,16 @@ class ProfessorStudentServiceTest {
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-05-31T00:00:00Z"), ZoneOffset.UTC);
   private FakeProfessorStudentMapper studentMapper;
-  private JwtTokenProvider tokenProvider;
   private ProfessorStudentService studentService;
 
   @BeforeEach
   void setUp() {
     studentMapper = new FakeProfessorStudentMapper();
-    tokenProvider =
-        new JwtTokenProvider(
-            "test-secret-key-test-secret-key-test-secret-key",
-            Duration.ofMinutes(30),
-            Duration.ofDays(1),
-            Duration.ofDays(30),
-            clock);
-    studentService = new ProfessorStudentService(studentMapper, tokenProvider);
+    studentService = new ProfessorStudentService(studentMapper);
   }
 
   @Test
   void getStudentsReturnsSelectedDivisionSummaryAndPagedStudents() {
-    String accessToken = tokenProvider.createAccessToken(10L, "P1001", "PROFESSOR").token();
     studentMapper.summary =
         new ProfessorStudentSummary("데이터베이스개론", "CSE301", "01분반", "2026-1학기", 6, 3);
     studentMapper.students.add(
@@ -51,7 +42,7 @@ class ProfessorStudentServiceTest {
 
     ProfessorStudentListResponse response =
         studentService.getStudents(
-            "Bearer " + accessToken, "CSE301", "01", "2024", 3, "컴퓨터", 1, 20);
+            professorUser(), "CSE301", "01", "2024", 3, "컴퓨터", 1, 20);
 
     assertThat(response.summary().courseId()).isEqualTo("CSE301");
     assertThat(response.summary().division()).isEqualTo("01분반");
@@ -69,10 +60,9 @@ class ProfessorStudentServiceTest {
 
   @Test
   void getStudentsRejectsMissingDivision() {
-    String accessToken = tokenProvider.createAccessToken(10L, "P1001", "PROFESSOR").token();
 
     assertThatThrownBy(
-            () -> studentService.getStudents("Bearer " + accessToken, "CSE301", "", null, null, null, 1, 20))
+            () -> studentService.getStudents(professorUser(), "CSE301", "", null, null, null, 1, 20))
         .isInstanceOfSatisfying(
             ProfessorHandler.class,
             exception ->
@@ -122,3 +112,4 @@ class ProfessorStudentServiceTest {
     }
   }
 }
+

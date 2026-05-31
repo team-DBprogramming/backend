@@ -1,6 +1,8 @@
 package com.example.backend.professor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.example.backend.support.TestAuthentications.professorUser;
+import static com.example.backend.support.TestAuthentications.studentUser;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
@@ -9,9 +11,7 @@ import com.example.backend.dto.professor.ProfessorStudentExportFile;
 import com.example.backend.dto.professor.ProfessorStudentExportRow;
 import com.example.backend.mapper.ProfessorStudentExportMapper;
 import com.example.backend.service.ProfessorStudentExportService;
-import com.example.backend.utils.JwtTokenProvider;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -25,25 +25,16 @@ class ProfessorStudentExportServiceTest {
   private final Clock clock =
       Clock.fixed(Instant.parse("2026-05-31T00:00:00Z"), ZoneId.of("Asia/Seoul"));
   private FakeProfessorStudentExportMapper exportMapper;
-  private JwtTokenProvider tokenProvider;
   private ProfessorStudentExportService exportService;
 
   @BeforeEach
   void setUp() {
     exportMapper = new FakeProfessorStudentExportMapper();
-    tokenProvider =
-        new JwtTokenProvider(
-            "test-secret-key-test-secret-key-test-secret-key",
-            Duration.ofMinutes(30),
-            Duration.ofDays(1),
-            Duration.ofDays(30),
-            clock);
-    exportService = new ProfessorStudentExportService(exportMapper, tokenProvider, clock);
+    exportService = new ProfessorStudentExportService(exportMapper, clock);
   }
 
   @Test
   void exportXlsxUsesFiltersAndFeatureSpecFileName() {
-    String accessToken = tokenProvider.createAccessToken(10L, "P1001", "PROFESSOR").token();
     exportMapper.course =
         new ProfessorStudentExportCourse("데이터베이스개론", "CSE301", "01분반", "2026-1학기");
     exportMapper.rows.add(
@@ -51,7 +42,7 @@ class ProfessorStudentExportServiceTest {
             "2024111111", "홍길동", 3, "컴퓨터공학과", "ENROLLED", "2026-02-09 09:12", null));
 
     ProfessorStudentExportFile file =
-        exportService.exportStudents("Bearer " + accessToken, "CSE301", "xlsx", "홍", 3, "컴퓨터");
+        exportService.exportStudents(professorUser(), "CSE301", "xlsx", "홍", 3, "컴퓨터");
 
     assertThat(exportMapper.requestedProfessorUserId).isEqualTo(10L);
     assertThat(exportMapper.requestedCourseId).isEqualTo("CSE301");
@@ -66,7 +57,6 @@ class ProfessorStudentExportServiceTest {
 
   @Test
   void exportCsvUsesCsvContentTypeAndExtension() {
-    String accessToken = tokenProvider.createAccessToken(10L, "P1001", "PROFESSOR").token();
     exportMapper.course =
         new ProfessorStudentExportCourse("데이터베이스개론", "CSE301", "01분반", "2026-1학기");
     exportMapper.rows.add(
@@ -74,7 +64,7 @@ class ProfessorStudentExportServiceTest {
             "2024111111", "홍길동", 3, "컴퓨터공학과", "ENROLLED", "2026-02-09 09:12", null));
 
     ProfessorStudentExportFile file =
-        exportService.exportStudents("Bearer " + accessToken, "CSE301", "csv", null, null, null);
+        exportService.exportStudents(professorUser(), "CSE301", "csv", null, null, null);
 
     assertThat(file.filename()).endsWith(".csv");
     assertThat(file.contentType()).isEqualTo("text/csv;charset=UTF-8");
@@ -83,10 +73,9 @@ class ProfessorStudentExportServiceTest {
 
   @Test
   void exportRejectsUnsupportedFormat() {
-    String accessToken = tokenProvider.createAccessToken(10L, "P1001", "PROFESSOR").token();
 
     assertThatThrownBy(
-            () -> exportService.exportStudents("Bearer " + accessToken, "CSE301", "pdf", null, null, null))
+            () -> exportService.exportStudents(professorUser(), "CSE301", "pdf", null, null, null))
         .isInstanceOfSatisfying(
             ProfessorHandler.class,
             exception ->
@@ -121,3 +110,4 @@ class ProfessorStudentExportServiceTest {
     }
   }
 }
+

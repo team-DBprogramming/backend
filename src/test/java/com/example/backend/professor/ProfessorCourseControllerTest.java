@@ -2,6 +2,8 @@ package com.example.backend.professor;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static com.example.backend.support.TestAuthentications.professorUser;
+import static com.example.backend.support.TestAuthentications.withProfessorAuthentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -11,23 +13,27 @@ import com.example.backend.dto.professor.ProfessorCourseListResponse;
 import com.example.backend.dto.professor.ProfessorCourseListResponse.CourseItem;
 import com.example.backend.dto.professor.ProfessorCourseListResponse.Statistics;
 import com.example.backend.service.ProfessorCourseService;
+import com.example.backend.utils.JwtTokenProvider;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ProfessorCourseController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ProfessorCourseControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private ProfessorCourseService courseService;
+  @MockitoBean private JwtTokenProvider tokenProvider;
 
   @Test
   void getCoursesReturnsProjectApiResponseFormat() throws Exception {
-    when(courseService.getCourses(eq("Bearer access-token"), eq("2026-1"), eq("데이터")))
+    when(courseService.getCourses(eq(professorUser()), eq("2026-1"), eq("데이터")))
         .thenReturn(
             new ProfessorCourseListResponse(
                 List.of(
@@ -46,7 +52,7 @@ class ProfessorCourseControllerTest {
     mockMvc
         .perform(
             get("/professors/me/courses")
-                .header("Authorization", "Bearer access-token")
+                .with(withProfessorAuthentication())
                 .queryParam("semester", "2026-1")
                 .queryParam("keyword", "데이터"))
         .andExpect(status().isOk())

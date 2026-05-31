@@ -10,6 +10,7 @@ import com.example.backend.dto.auth.LogoutRequest;
 import com.example.backend.dto.auth.AuthUser;
 import com.example.backend.mapper.AuthMapper;
 import com.example.backend.mapper.RefreshTokenMapper;
+import com.example.backend.security.AuthenticatedUser;
 import com.example.backend.utils.AccessToken;
 import com.example.backend.utils.JwtTokenProvider;
 import com.example.backend.utils.TokenClaims;
@@ -81,16 +82,15 @@ public class AuthService {
   }
 
   @Transactional
-  public void logout(String authorizationHeader, LogoutRequest request) {
-    if (isBlank(authorizationHeader) || !authorizationHeader.startsWith("Bearer ")) {
-      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
-    }
+  public void logout(AuthenticatedUser currentUser, LogoutRequest request) {
     if (request == null || isBlank(request.refreshToken())) {
       throw new AuthHandler(ErrorStatus.AUTH_MISSING_REFRESH_TOKEN);
     }
 
-    tokenProvider.validateAccessToken(authorizationHeader.substring("Bearer ".length()).trim());
-    tokenProvider.validateRefreshToken(request.refreshToken());
+    TokenClaims refreshClaims = tokenProvider.validateRefreshToken(request.refreshToken());
+    if (!currentUser.userId().equals(refreshClaims.userId())) {
+      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
+    }
 
     String tokenHash = tokenProvider.hashToken(request.refreshToken());
     Instant now = clock.instant();

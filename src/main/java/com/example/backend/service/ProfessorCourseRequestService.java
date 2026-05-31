@@ -1,7 +1,6 @@
 package com.example.backend.service;
 
 import com.example.backend.apiPayload.code.status.ErrorStatus;
-import com.example.backend.apiPayload.exception.handler.AuthHandler;
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
 import com.example.backend.dto.professor.CourseRequestDecisionRequest;
 import com.example.backend.dto.professor.CourseRequestDecisionResponse;
@@ -10,8 +9,7 @@ import com.example.backend.dto.professor.CourseRequestListResponse;
 import com.example.backend.dto.professor.CourseRequestSummary;
 import com.example.backend.dto.professor.ProfessorCourseRequestInfo;
 import com.example.backend.mapper.ProfessorCourseRequestMapper;
-import com.example.backend.utils.JwtTokenProvider;
-import com.example.backend.utils.TokenClaims;
+import com.example.backend.security.AuthenticatedUser;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -27,45 +25,42 @@ public class ProfessorCourseRequestService {
   private static final String RESULT_NOTIFICATION_TYPE = "COURSE_REQUEST_RESULT";
 
   private final ProfessorCourseRequestMapper requestMapper;
-  private final JwtTokenProvider tokenProvider;
   private final Clock clock;
 
-  public ProfessorCourseRequestService(
-      ProfessorCourseRequestMapper requestMapper, JwtTokenProvider tokenProvider, Clock clock) {
+  public ProfessorCourseRequestService(ProfessorCourseRequestMapper requestMapper, Clock clock) {
     this.requestMapper = requestMapper;
-    this.tokenProvider = tokenProvider;
     this.clock = clock;
   }
 
   @Transactional(readOnly = true)
   public CourseRequestListResponse getRequests(
-      String authorizationHeader, String courseId, Integer page, Integer size) {
-    TokenClaims claims = validateProfessor(authorizationHeader);
+      AuthenticatedUser currentUser, String courseId, Integer page, Integer size) {
+    Long professorUserId = currentUser.requireProfessorUserId();
     int currentPage = positiveOrDefault(page, 1);
     int pageSize = positiveOrDefault(size, 20);
     int offset = (currentPage - 1) * pageSize;
 
-    CourseRequestSummary summary = requestMapper.findRequestSummary(claims.userId(), courseId);
+    CourseRequestSummary summary = requestMapper.findRequestSummary(professorUserId, courseId);
     if (summary == null) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
     }
     List<CourseRequestItem> requests =
-        requestMapper.findPendingRequests(claims.userId(), courseId, pageSize, offset);
+        requestMapper.findPendingRequests(professorUserId, courseId, pageSize, offset);
     return new CourseRequestListResponse(summary, requests);
   }
 
   @Transactional
   public CourseRequestDecisionResponse decideRequest(
-      String authorizationHeader,
+      AuthenticatedUser currentUser,
       String courseId,
       String requestId,
       CourseRequestDecisionRequest request) {
-    TokenClaims claims = validateProfessor(authorizationHeader);
+    Long professorUserId = currentUser.requireProfessorUserId();
     String status = normalizeStatus(request);
     Instant now = clock.instant();
 
     ProfessorCourseRequestInfo info =
-        requestMapper.findRequestForProfessor(claims.userId(), courseId, requestId);
+        requestMapper.findRequestForProfessor(professorUserId, courseId, requestId);
     if (info == null) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
     }
@@ -74,14 +69,14 @@ public class ProfessorCourseRequestService {
     }
 
     int updated =
-        requestMapper.updatePendingRequestStatus(claims.userId(), courseId, requestId, status, now);
+        requestMapper.updatePendingRequestStatus(professorUserId, courseId, requestId, status, now);
     if (updated <= 0) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_ALREADY_PROCESSED);
     }
 
     requestMapper.insertResultNotification(
         info.studentUserId(),
-        claims.userId(),
+        professorUserId,
         info.sectionId(),
         info.requestPk(),
         notificationTitle(info.courseName(), status),
@@ -90,18 +85,6 @@ public class ProfessorCourseRequestService {
         now);
 
     return new CourseRequestDecisionResponse(info.requestId(), status, now);
-  }
-
-  private TokenClaims validateProfessor(String authorizationHeader) {
-    if (isBlank(authorizationHeader) || !authorizationHeader.startsWith("Bearer ")) {
-      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
-    }
-    TokenClaims claims =
-        tokenProvider.validateAccessToken(authorizationHeader.substring("Bearer ".length()).trim());
-    if (!"PROFESSOR".equals(claims.role())) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_FORBIDDEN);
-    }
-    return claims;
   }
 
   private String normalizeStatus(CourseRequestDecisionRequest request) {

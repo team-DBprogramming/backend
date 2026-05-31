@@ -1,8 +1,6 @@
 package com.example.backend.service;
 
 import com.example.backend.apiPayload.code.status.ErrorStatus;
-import com.example.backend.apiPayload.exception.handler.AuthHandler;
-import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
 import com.example.backend.dto.professor.ProfessorAssignedCourse;
 import com.example.backend.dto.professor.ProfessorDashboardResponse;
 import com.example.backend.dto.professor.ProfessorDashboardResponse.AssignedCourseItem;
@@ -10,8 +8,7 @@ import com.example.backend.dto.professor.ProfessorDashboardResponse.TodaySchedul
 import com.example.backend.dto.professor.ProfessorDashboardSummary;
 import com.example.backend.dto.professor.ProfessorTodaySchedule;
 import com.example.backend.mapper.ProfessorDashboardMapper;
-import com.example.backend.utils.JwtTokenProvider;
-import com.example.backend.utils.TokenClaims;
+import com.example.backend.security.AuthenticatedUser;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -27,31 +24,28 @@ public class ProfessorDashboardService {
   private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
 
   private final ProfessorDashboardMapper dashboardMapper;
-  private final JwtTokenProvider tokenProvider;
   private final Clock clock;
 
-  public ProfessorDashboardService(
-      ProfessorDashboardMapper dashboardMapper, JwtTokenProvider tokenProvider, Clock clock) {
+  public ProfessorDashboardService(ProfessorDashboardMapper dashboardMapper, Clock clock) {
     this.dashboardMapper = dashboardMapper;
-    this.tokenProvider = tokenProvider;
     this.clock = clock;
   }
 
   @Transactional(readOnly = true)
-  public ProfessorDashboardResponse getDashboard(String authorizationHeader, String semester) {
-    TokenClaims claims = validateProfessor(authorizationHeader);
+  public ProfessorDashboardResponse getDashboard(AuthenticatedUser currentUser, String semester) {
+    Long professorUserId = currentUser.requireProfessorUserId();
     String normalizedSemester = normalizeSemester(semester);
     ZonedDateTime now = ZonedDateTime.now(clock.withZone(SEOUL_ZONE));
     String today = toSchemaDayOfWeek(now.getDayOfWeek());
 
     ProfessorDashboardSummary summary =
-        nullToEmptySummary(dashboardMapper.findDashboardSummary(claims.userId(), normalizedSemester));
+        nullToEmptySummary(dashboardMapper.findDashboardSummary(professorUserId, normalizedSemester));
     List<TodayScheduleItem> todaySchedule =
-        dashboardMapper.findTodaySchedules(claims.userId(), normalizedSemester, today).stream()
+        dashboardMapper.findTodaySchedules(professorUserId, normalizedSemester, today).stream()
             .map(schedule -> toTodayScheduleItem(schedule, now.toLocalTime()))
             .toList();
     List<AssignedCourseItem> assignedCourses =
-        dashboardMapper.findAssignedCourses(claims.userId(), normalizedSemester).stream()
+        dashboardMapper.findAssignedCourses(professorUserId, normalizedSemester).stream()
             .map(this::toAssignedCourseItem)
             .toList();
 
@@ -63,18 +57,6 @@ public class ProfessorDashboardService {
         intValue(summary.getNewReviewCount()),
         todaySchedule,
         assignedCourses);
-  }
-
-  private TokenClaims validateProfessor(String authorizationHeader) {
-    if (isBlank(authorizationHeader) || !authorizationHeader.startsWith("Bearer ")) {
-      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
-    }
-    TokenClaims claims =
-        tokenProvider.validateAccessToken(authorizationHeader.substring("Bearer ".length()).trim());
-    if (!"PROFESSOR".equals(claims.role())) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_FORBIDDEN);
-    }
-    return claims;
   }
 
   private TodayScheduleItem toTodayScheduleItem(ProfessorTodaySchedule schedule, LocalTime now) {

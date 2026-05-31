@@ -6,10 +6,11 @@ import com.example.backend.dto.auth.AccessTokenResponse;
 import com.example.backend.dto.auth.LoginRequest;
 import com.example.backend.dto.auth.LoginResponse;
 import com.example.backend.dto.auth.LogoutRequest;
+import com.example.backend.security.CustomUserDetails;
 import com.example.backend.service.AuthService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,9 +31,9 @@ public class AuthController {
 
   @PostMapping("/logout")
   public ApiResponse<Void> logout(
-      @RequestHeader("Authorization") String authorization,
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestBody LogoutRequest request) {
-    authService.logout(authorization, request);
+    authService.logout(userDetails.toAuthenticatedUser(), request);
     return ApiResponse.of(SuccessStatus.AUTH_LOGOUT, null);
   }
 

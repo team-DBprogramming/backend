@@ -3,10 +3,11 @@ package com.example.backend.controller;
 import com.example.backend.apiPayload.ApiResponse;
 import com.example.backend.apiPayload.code.status.SuccessStatus;
 import com.example.backend.dto.professor.ProfessorStudentListResponse;
+import com.example.backend.security.CustomUserDetails;
 import com.example.backend.service.ProfessorStudentService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,7 +24,7 @@ public class ProfessorStudentController {
 
   @GetMapping
   public ApiResponse<ProfessorStudentListResponse> getStudents(
-      @RequestHeader("Authorization") String authorization,
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @PathVariable String courseId,
       @RequestParam("division") String division,
       @RequestParam(value = "keyword", required = false) String keyword,
@@ -34,6 +35,6 @@ public class ProfessorStudentController {
     return ApiResponse.of(
         SuccessStatus.PROFESSOR_STUDENTS,
         studentService.getStudents(
-            authorization, courseId, division, keyword, grade, major, page, size));
+            userDetails.toAuthenticatedUser(), courseId, division, keyword, grade, major, page, size));
   }
 }

@@ -2,6 +2,8 @@ package com.example.backend.professor;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static com.example.backend.support.TestAuthentications.professorUser;
+import static com.example.backend.support.TestAuthentications.withProfessorAuthentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -11,24 +13,28 @@ import com.example.backend.dto.professor.ProfessorStudentItem;
 import com.example.backend.dto.professor.ProfessorStudentListResponse;
 import com.example.backend.dto.professor.ProfessorStudentSummary;
 import com.example.backend.service.ProfessorStudentService;
+import com.example.backend.utils.JwtTokenProvider;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ProfessorStudentController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ProfessorStudentControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private ProfessorStudentService studentService;
+  @MockitoBean private JwtTokenProvider tokenProvider;
 
   @Test
   void getStudentsReturnsProjectApiResponseFormat() throws Exception {
     when(studentService.getStudents(
-            eq("Bearer access-token"),
+            eq(professorUser()),
             eq("CSE301"),
             eq("01"),
             eq("2024"),
@@ -45,7 +51,7 @@ class ProfessorStudentControllerTest {
     mockMvc
         .perform(
             get("/professors/me/courses/CSE301/students")
-                .header("Authorization", "Bearer access-token")
+                .with(withProfessorAuthentication())
                 .queryParam("division", "01")
                 .queryParam("keyword", "2024")
                 .queryParam("grade", "3")
