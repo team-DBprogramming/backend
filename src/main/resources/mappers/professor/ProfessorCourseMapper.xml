@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.ProfessorCourseMapper">
+  <resultMap id="ProfessorCourseItemResultMap" type="com.example.backend.dto.professor.ProfessorCourseItem">
+    <result property="courseId" column="course_id" />
+    <result property="courseName" column="course_name" />
+    <result property="division" column="division" />
+    <result property="credit" column="credit" />
+    <result property="schedule" column="schedule" />
+    <result property="room" column="room" />
+    <result property="capacity" column="capacity" />
+    <result property="enrolled" column="enrolled" />
+    <result property="avgSatisfaction" column="avg_satisfaction" />
+  </resultMap>
+
+  <resultMap id="ProfessorCourseStatisticsResultMap" type="com.example.backend.dto.professor.ProfessorCourseStatistics">
+    <result property="totalCourses" column="total_courses" />
+    <result property="totalStudents" column="total_students" />
+    <result property="avgSatisfaction" column="avg_satisfaction" />
+  </resultMap>
+
+  <sql id="semesterCondition">
+    (
+      (#{semester} IS NULL AND sm.is_current = 1)
+      OR
+      (
+        #{semester} IS NOT NULL
+        AND TO_CHAR(sm.year) || '-' ||
+          CASE sm.term
+            WHEN 'SPRING' THEN '1'
+            WHEN 'FALL' THEN '2'
+            ELSE sm.term
+          END = #{semester}
+      )
+    )
+  </sql>
+
+  <select id="findCourses" resultMap="ProfessorCourseItemResultMap">
+    SELECT
+      c.course_code AS course_id,
+      c.course_name,
+      cs.section_no || '분반' AS division,
+      c.credits AS credit,
+      (
+        SELECT LISTAGG(
+          CASE ss.day_of_week
+            WHEN 'MON' THEN '월'
+            WHEN 'TUE' THEN '화'
+            WHEN 'WED' THEN '수'
+            WHEN 'THU' THEN '목'
+            WHEN 'FRI' THEN '금'
+            WHEN 'SAT' THEN '토'
+            ELSE ss.day_of_week
+          END || ' ' || ss.start_time || '-' || ss.end_time,
+          ', '
+        ) WITHIN GROUP (ORDER BY ss.start_time, ss.day_of_week)
+        FROM section_schedule ss
+        WHERE ss.section_id = cs.section_id
+      ) AS schedule,
+      (
+        SELECT LISTAGG(room_name, ', ') WITHIN GROUP (ORDER BY room_name)
+        FROM (
+          SELECT DISTINCT cr.building || ' ' || cr.room_no AS room_name
+          FROM section_schedule ss
+          JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+          WHERE ss.section_id = cs.section_id
+        )
+      ) AS room,
+      cs.capacity,
+      COALESCE(cs.enrolled_count, 0) AS enrolled,
+      (
+        SELECT ROUND(AVG(r.rating_overall), 1)
+        FROM enrollment e
+        JOIN review r ON r.enrollment_id = e.enrollment_id
+        WHERE e.section_id = cs.section_id
+          AND e.status = 'ENROLLED'
+      ) AS avg_satisfaction
+    FROM professor p
+    JOIN course_section cs ON cs.professor_id = p.professor_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    WHERE p.user_id = #{userId}
+      AND cs.status != 'CANCELLED'
+      AND <include refid="semesterCondition" />
+      AND (
+        #{keyword} IS NULL
+        OR LOWER(c.course_name) LIKE '%' || LOWER(#{keyword}) || '%'
+        OR LOWER(c.course_code) LIKE '%' || LOWER(#{keyword}) || '%'
+      )
+    ORDER BY c.course_name, cs.section_no
+  </select>
+
+  <select id="findStatistics" resultMap="ProfessorCourseStatisticsResultMap">
+    SELECT
+      (
+        SELECT COUNT(DISTINCT cs.section_id)
+        FROM professor p
+        JOIN course_section cs ON cs.professor_id = p.professor_id
+        JOIN semester sm ON sm.semester_id = cs.semester_id
+        WHERE p.user_id = #{userId}
+          AND cs.status != 'CANCELLED'
+          AND <include refid="semesterCondition" />
+      ) AS total_courses,
+      (
+        SELECT COALESCE(SUM(cs.enrolled_count), 0)
+        FROM professor p
+        JOIN course_section cs ON cs.professor_id = p.professor_id
+        JOIN semester sm ON sm.semester_id = cs.semester_id
+        WHERE p.user_id = #{userId}
+          AND cs.status != 'CANCELLED'
+          AND <include refid="semesterCondition" />
+      ) AS total_students,
+      (
+        SELECT ROUND(AVG(r.rating_overall), 1)
+        FROM professor p
+        JOIN course_section cs ON cs.professor_id = p.professor_id
+        JOIN semester sm ON sm.semester_id = cs.semester_id
+        JOIN enrollment e ON e.section_id = cs.section_id AND e.status = 'ENROLLED'
+        JOIN review r ON r.enrollment_id = e.enrollment_id
+        WHERE p.user_id = #{userId}
+          AND cs.status != 'CANCELLED'
+          AND <include refid="semesterCondition" />
+      ) AS avg_satisfaction
+    FROM dual
+  </select>
+</mapper>
