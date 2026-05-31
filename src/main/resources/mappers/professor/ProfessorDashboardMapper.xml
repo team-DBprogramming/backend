@@ -15,6 +15,7 @@
   <resultMap id="TodayScheduleResultMap" type="com.example.backend.dto.professor.ProfessorTodaySchedule">
     <result property="courseId" column="course_id" />
     <result property="courseName" column="course_name" />
+    <result property="division" column="division" />
     <result property="studentCount" column="student_count" />
     <result property="startTime" column="start_time" />
     <result property="endTime" column="end_time" />
@@ -108,6 +109,7 @@
     SELECT
       c.course_code AS course_id,
       c.course_name,
+      cs.section_no || '분반' AS division,
       cs.enrolled_count AS student_count,
       ss.start_time,
       ss.end_time,

@@ -37,18 +37,22 @@ public class ProfessorStudentExportService {
   public ProfessorStudentExportFile exportStudents(
       AuthenticatedUser currentUser,
       String courseId,
+      String division,
       String format,
       String keyword,
       Integer grade,
       String major) {
     Long professorUserId = currentUser.requireProfessorUserId();
+    String normalizedDivision = normalizeRequiredDivision(division);
     String normalizedFormat = normalizeFormat(format);
-    ProfessorStudentExportCourse course = exportMapper.findCourse(professorUserId, courseId);
+    ProfessorStudentExportCourse course =
+        exportMapper.findCourse(professorUserId, courseId, normalizedDivision);
     if (course == null) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
     }
     List<ProfessorStudentExportRow> rows =
-        exportMapper.findStudents(professorUserId, courseId, normalize(keyword), grade, normalize(major));
+        exportMapper.findStudents(
+            professorUserId, courseId, normalizedDivision, normalize(keyword), grade, normalize(major));
     String filename = filename(course, normalizedFormat);
     byte[] bytes = "xlsx".equals(normalizedFormat) ? toXlsx(rows) : toCsv(rows);
     String contentType = "xlsx".equals(normalizedFormat) ? XLSX_CONTENT_TYPE : CSV_CONTENT_TYPE;
@@ -62,6 +66,13 @@ public class ProfessorStudentExportService {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_EXPORT_INVALID_FORMAT);
     }
     return normalized;
+  }
+
+  private String normalizeRequiredDivision(String division) {
+    if (isBlank(division)) {
+      throw new ProfessorHandler(ErrorStatus.PROFESSOR_DIVISION_REQUIRED);
+    }
+    return division.trim();
   }
 
   private String filename(ProfessorStudentExportCourse course, String format) {

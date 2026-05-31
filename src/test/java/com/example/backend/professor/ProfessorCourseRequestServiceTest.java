@@ -44,6 +44,7 @@ class ProfessorCourseRequestServiceTest {
         requestService.decideRequest(
             professorUser(),
             "CSE301",
+            "01",
             "req-db-001",
             new CourseRequestDecisionRequest("APPROVED"));
 
@@ -67,6 +68,7 @@ class ProfessorCourseRequestServiceTest {
                 requestService.decideRequest(
                     professorUser(),
                     "CSE301",
+                    "01",
                     "req-db-001",
                     new CourseRequestDecisionRequest("REJECTED")))
         .isInstanceOfSatisfying(
@@ -83,6 +85,7 @@ class ProfessorCourseRequestServiceTest {
                 requestService.decideRequest(
                     professorUser(),
                     "CSE301",
+                    "01",
                     "req-db-001",
                     new CourseRequestDecisionRequest("PENDING")))
         .isInstanceOfSatisfying(
@@ -106,7 +109,7 @@ class ProfessorCourseRequestServiceTest {
             "전공 필수 과목으로 수강이 필요합니다."));
 
     CourseRequestListResponse response =
-        requestService.getRequests(professorUser(), "CSE301", null, null);
+        requestService.getRequests(professorUser(), "CSE301", "01", null, null);
 
     assertThat(response.summary().courseName()).isEqualTo("데이터베이스개론");
     assertThat(response.summary().requestCount()).isEqualTo(3);
@@ -114,6 +117,7 @@ class ProfessorCourseRequestServiceTest {
     assertThat(response.requests().get(0).studentId()).isEqualTo("2024111111");
     assertThat(requestMapper.requestedSize).isEqualTo(20);
     assertThat(requestMapper.requestedOffset).isZero();
+    assertThat(requestMapper.requestedDivision).isEqualTo("01");
   }
 
   private static class FakeProfessorCourseRequestMapper implements ProfessorCourseRequestMapper {
@@ -124,23 +128,27 @@ class ProfessorCourseRequestServiceTest {
     private Long notificationRecipientUserId;
     private Long notificationSenderUserId;
     private String notificationType;
+    private String requestedDivision;
     private int requestedSize;
     private int requestedOffset;
 
     @Override
     public ProfessorCourseRequestInfo findRequestForProfessor(
-        Long professorUserId, String courseId, String requestId) {
+        Long professorUserId, String courseId, String division, String requestId) {
+      requestedDivision = division;
       return info;
     }
 
     @Override
-    public CourseRequestSummary findRequestSummary(Long professorUserId, String courseId) {
+    public CourseRequestSummary findRequestSummary(Long professorUserId, String courseId, String division) {
+      requestedDivision = division;
       return summary;
     }
 
     @Override
     public List<CourseRequestItem> findPendingRequests(
-        Long professorUserId, String courseId, int size, int offset) {
+        Long professorUserId, String courseId, String division, int size, int offset) {
+      requestedDivision = division;
       requestedSize = size;
       requestedOffset = offset;
       return requests;
@@ -148,7 +156,13 @@ class ProfessorCourseRequestServiceTest {
 
     @Override
     public int updatePendingRequestStatus(
-        Long professorUserId, String courseId, String requestId, String status, Instant processedAt) {
+        Long professorUserId,
+        String courseId,
+        String division,
+        String requestId,
+        String status,
+        Instant processedAt) {
+      requestedDivision = division;
       updatedStatus = status;
       return info != null && "PENDING".equals(info.status()) ? 1 : 0;
     }

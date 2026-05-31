@@ -63,6 +63,7 @@ public class ProfessorDashboardService {
     return new TodayScheduleItem(
         schedule.getCourseId(),
         schedule.getCourseName(),
+        schedule.getDivision(),
         intValue(schedule.getStudentCount()),
         schedule.getStartTime(),
         schedule.getEndTime(),

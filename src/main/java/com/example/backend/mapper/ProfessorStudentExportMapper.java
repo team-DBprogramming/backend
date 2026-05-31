@@ -10,11 +10,14 @@ import org.apache.ibatis.annotations.Param;
 public interface ProfessorStudentExportMapper {
 
   ProfessorStudentExportCourse findCourse(
-      @Param("professorUserId") Long professorUserId, @Param("courseId") String courseId);
+      @Param("professorUserId") Long professorUserId,
+      @Param("courseId") String courseId,
+      @Param("division") String division);
 
   List<ProfessorStudentExportRow> findStudents(
       @Param("professorUserId") Long professorUserId,
       @Param("courseId") String courseId,
+      @Param("division") String division,
       @Param("keyword") String keyword,
       @Param("grade") Integer grade,
       @Param("major") String major);

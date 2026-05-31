@@ -39,7 +39,7 @@ class ProfessorCourseRequestControllerTest {
   @Test
   void decideRequestReturnsCreatedResponse() throws Exception {
     when(requestService.decideRequest(
-            eq(professorUser()), eq("CSE301"), eq("req-db-001"), any()))
+            eq(professorUser()), eq("CSE301"), eq("01"), eq("req-db-001"), any()))
         .thenReturn(
             new CourseRequestDecisionResponse(
                 "req-db-001", "APPROVED", Instant.parse("2026-05-21T22:15:30Z")));
@@ -48,6 +48,7 @@ class ProfessorCourseRequestControllerTest {
         .perform(
             patch("/professors/me/courses/CSE301/requests/req-db-001")
                 .with(withProfessorAuthentication())
+                .queryParam("division", "01")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -66,7 +67,7 @@ class ProfessorCourseRequestControllerTest {
 
   @Test
   void getRequestsReturnsProjectApiResponseFormat() throws Exception {
-    when(requestService.getRequests(eq(professorUser()), eq("CSE301"), eq(1), eq(20)))
+    when(requestService.getRequests(eq(professorUser()), eq("CSE301"), eq("01"), eq(1), eq(20)))
         .thenReturn(
             new CourseRequestListResponse(
                 new CourseRequestSummary("데이터베이스개론", "CSE301", "01분반", "2026-1학기", 6, 3),
@@ -84,6 +85,7 @@ class ProfessorCourseRequestControllerTest {
         .perform(
             get("/professors/me/courses/CSE301/requests")
                 .with(withProfessorAuthentication())
+                .queryParam("division", "01")
                 .queryParam("page", "1")
                 .queryParam("size", "20"))
         .andExpect(status().isOk())

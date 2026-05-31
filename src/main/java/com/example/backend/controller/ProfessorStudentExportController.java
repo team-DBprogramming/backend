@@ -66,6 +66,8 @@ public class ProfessorStudentExportController {
   public ResponseEntity<byte[]> exportStudents(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
       @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
+      @Parameter(description = "분반", required = true, example = "01") @RequestParam("division")
+          String division,
       @Parameter(description = "다운로드 파일 형식", required = true, example = "xlsx")
           @RequestParam
           String format,
@@ -80,7 +82,7 @@ public class ProfessorStudentExportController {
           String major) {
     ProfessorStudentExportFile file =
         exportService.exportStudents(
-            userDetails.toAuthenticatedUser(), courseId, format, keyword, grade, major);
+            userDetails.toAuthenticatedUser(), courseId, division, format, keyword, grade, major);
 
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(file.filename()))

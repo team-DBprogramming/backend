@@ -31,7 +31,7 @@ class ProfessorStudentExportControllerTest {
   @Test
   void exportStudentsReturnsAttachmentResponse() throws Exception {
     when(exportService.exportStudents(
-            eq(professorUser()), eq("CSE301"), eq("xlsx"), eq("홍"), eq(3), eq("컴퓨터")))
+            eq(professorUser()), eq("CSE301"), eq("01"), eq("xlsx"), eq("홍"), eq(3), eq("컴퓨터")))
         .thenReturn(
             new ProfessorStudentExportFile(
                 "학생관리_데이터베이스개론_2026-1학기_2026-05-31.xlsx",
@@ -42,6 +42,7 @@ class ProfessorStudentExportControllerTest {
         .perform(
             get("/professors/me/courses/CSE301/students/export")
                 .with(withProfessorAuthentication())
+                .queryParam("division", "01")
                 .queryParam("format", "xlsx")
                 .queryParam("keyword", "홍")
                 .queryParam("grade", "3")

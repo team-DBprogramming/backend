@@ -43,7 +43,7 @@ class ProfessorDashboardControllerTest {
                 5,
                 List.of(
                     new TodayScheduleItem(
-                        "CSE301", "데이터베이스개론", 28, "10:30", "12:00", "A동 301호", "SCHEDULED")),
+                        "CSE301", "데이터베이스개론", "01분반", 28, "10:30", "12:00", "A동 301호", "SCHEDULED")),
                 List.of(
                     new AssignedCourseItem(
                         "CSE301", "데이터베이스개론", "01분반", 28, 35, 4.5))));
@@ -60,6 +60,7 @@ class ProfessorDashboardControllerTest {
         .andExpect(jsonPath("$.result.totalStudents").value(73))
         .andExpect(jsonPath("$.result.totalCapacity").value(100))
         .andExpect(jsonPath("$.result.avgSatisfaction").value(4.5))
+        .andExpect(jsonPath("$.result.todaySchedule[0].division").value("01분반"))
         .andExpect(jsonPath("$.result.todaySchedule[0].scheduleStatus").value("SCHEDULED"))
         .andExpect(jsonPath("$.result.assignedCourses[0].division").value("01분반"));
   }

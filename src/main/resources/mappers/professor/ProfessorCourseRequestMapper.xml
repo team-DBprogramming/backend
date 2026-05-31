@@ -39,6 +39,14 @@
     </constructor>
   </resultMap>
 
+  <sql id="divisionCondition">
+    (cs.section_no = #{division} OR cs.section_no || '분반' = #{division})
+  </sql>
+
+  <sql id="requestDivisionCondition">
+    (rcs.section_no = #{division} OR rcs.section_no || '분반' = #{division})
+  </sql>
+
   <select id="findRequestSummary" resultMap="CourseRequestSummaryResultMap">
     SELECT
       c.course_name,
@@ -60,6 +68,7 @@
         JOIN professor rp ON rp.professor_id = rcs.professor_id
         WHERE rp.user_id = #{professorUserId}
           AND rc.course_code = #{courseId}
+          AND <include refid="requestDivisionCondition" />
           AND rcs.status != 'CANCELLED'
           AND rsm.is_current = 1
           AND cr.status = 'PENDING'
@@ -70,6 +79,7 @@
     JOIN semester sm ON sm.semester_id = cs.semester_id
     WHERE p.user_id = #{professorUserId}
       AND c.course_code = #{courseId}
+      AND <include refid="divisionCondition" />
       AND cs.status != 'CANCELLED'
       AND sm.is_current = 1
     GROUP BY c.course_name, c.course_code, sm.year, sm.term
@@ -104,6 +114,7 @@
       JOIN professor p ON p.professor_id = cs.professor_id
       WHERE p.user_id = #{professorUserId}
         AND c.course_code = #{courseId}
+        AND <include refid="divisionCondition" />
         AND cs.status != 'CANCELLED'
         AND sm.is_current = 1
         AND cr.status = 'PENDING'
@@ -131,6 +142,7 @@
     JOIN user_account pu ON pu.user_id = p.user_id
     WHERE pu.user_id = #{professorUserId}
       AND c.course_code = #{courseId}
+      AND <include refid="divisionCondition" />
       AND TO_CHAR(cr.request_id) = #{requestId}
   </select>
 
@@ -153,6 +165,7 @@
         JOIN professor p ON p.professor_id = cs.professor_id
         WHERE cs.section_id = cr.section_id
           AND c.course_code = #{courseId}
+          AND <include refid="divisionCondition" />
           AND p.user_id = #{professorUserId}
       )
   </update>

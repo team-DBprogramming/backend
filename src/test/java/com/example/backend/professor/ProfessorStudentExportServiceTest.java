@@ -42,10 +42,11 @@ class ProfessorStudentExportServiceTest {
             "2024111111", "홍길동", 3, "컴퓨터공학과", "ENROLLED", "2026-02-09 09:12", null));
 
     ProfessorStudentExportFile file =
-        exportService.exportStudents(professorUser(), "CSE301", "xlsx", "홍", 3, "컴퓨터");
+        exportService.exportStudents(professorUser(), "CSE301", "01", "xlsx", "홍", 3, "컴퓨터");
 
     assertThat(exportMapper.requestedProfessorUserId).isEqualTo(10L);
     assertThat(exportMapper.requestedCourseId).isEqualTo("CSE301");
+    assertThat(exportMapper.requestedDivision).isEqualTo("01");
     assertThat(exportMapper.requestedKeyword).isEqualTo("홍");
     assertThat(exportMapper.requestedGrade).isEqualTo(3);
     assertThat(exportMapper.requestedMajor).isEqualTo("컴퓨터");
@@ -64,7 +65,7 @@ class ProfessorStudentExportServiceTest {
             "2024111111", "홍길동", 3, "컴퓨터공학과", "ENROLLED", "2026-02-09 09:12", null));
 
     ProfessorStudentExportFile file =
-        exportService.exportStudents(professorUser(), "CSE301", "csv", null, null, null);
+        exportService.exportStudents(professorUser(), "CSE301", "01", "csv", null, null, null);
 
     assertThat(file.filename()).endsWith(".csv");
     assertThat(file.contentType()).isEqualTo("text/csv;charset=UTF-8");
@@ -75,7 +76,7 @@ class ProfessorStudentExportServiceTest {
   void exportRejectsUnsupportedFormat() {
 
     assertThatThrownBy(
-            () -> exportService.exportStudents(professorUser(), "CSE301", "pdf", null, null, null))
+            () -> exportService.exportStudents(professorUser(), "CSE301", "01", "pdf", null, null, null))
         .isInstanceOfSatisfying(
             ProfessorHandler.class,
             exception ->
@@ -85,6 +86,7 @@ class ProfessorStudentExportServiceTest {
   private static class FakeProfessorStudentExportMapper implements ProfessorStudentExportMapper {
     private Long requestedProfessorUserId;
     private String requestedCourseId;
+    private String requestedDivision;
     private String requestedKeyword;
     private Integer requestedGrade;
     private String requestedMajor;
@@ -92,17 +94,24 @@ class ProfessorStudentExportServiceTest {
     private final List<ProfessorStudentExportRow> rows = new ArrayList<>();
 
     @Override
-    public ProfessorStudentExportCourse findCourse(Long professorUserId, String courseId) {
+    public ProfessorStudentExportCourse findCourse(Long professorUserId, String courseId, String division) {
       requestedProfessorUserId = professorUserId;
       requestedCourseId = courseId;
+      requestedDivision = division;
       return course;
     }
 
     @Override
     public List<ProfessorStudentExportRow> findStudents(
-        Long professorUserId, String courseId, String keyword, Integer grade, String major) {
+        Long professorUserId,
+        String courseId,
+        String division,
+        String keyword,
+        Integer grade,
+        String major) {
       requestedProfessorUserId = professorUserId;
       requestedCourseId = courseId;
+      requestedDivision = division;
       requestedKeyword = keyword;
       requestedGrade = grade;
       requestedMajor = major;

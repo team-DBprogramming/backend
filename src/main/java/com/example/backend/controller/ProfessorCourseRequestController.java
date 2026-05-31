@@ -56,6 +56,8 @@ public class ProfessorCourseRequestController {
   public ApiResponse<CourseRequestListResponse> getRequests(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
       @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
+      @Parameter(description = "분반", required = true, example = "01") @RequestParam("division")
+          String division,
       @Parameter(description = "페이지 번호, 기본값 1", example = "1")
           @RequestParam(value = "page", required = false)
           Integer page,
@@ -64,7 +66,7 @@ public class ProfessorCourseRequestController {
           Integer size) {
     return ApiResponse.of(
         SuccessStatus.PROFESSOR_REQUESTS,
-        requestService.getRequests(userDetails.toAuthenticatedUser(), courseId, page, size));
+        requestService.getRequests(userDetails.toAuthenticatedUser(), courseId, division, page, size));
   }
 
   @PatchMapping("/{requestId}")
@@ -110,10 +112,12 @@ public class ProfessorCourseRequestController {
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
       @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
       @Parameter(description = "수강 요청 ID", example = "req-db-001") @PathVariable String requestId,
+      @Parameter(description = "분반", required = true, example = "01") @RequestParam("division")
+          String division,
       @RequestBody CourseRequestDecisionRequest request) {
     return ApiResponse.of(
         SuccessStatus.PROFESSOR_REQUEST_PROCESSED,
         requestService.decideRequest(
-            userDetails.toAuthenticatedUser(), courseId, requestId, request));
+            userDetails.toAuthenticatedUser(), courseId, division, requestId, request));
   }
 }

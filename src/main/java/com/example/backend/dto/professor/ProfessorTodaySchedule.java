@@ -4,6 +4,7 @@ public class ProfessorTodaySchedule {
 
   private String courseId;
   private String courseName;
+  private String division;
   private Integer studentCount;
   private String startTime;
   private String endTime;
@@ -14,12 +15,14 @@ public class ProfessorTodaySchedule {
   public ProfessorTodaySchedule(
       String courseId,
       String courseName,
+      String division,
       Integer studentCount,
       String startTime,
       String endTime,
       String room) {
     this.courseId = courseId;
     this.courseName = courseName;
+    this.division = division;
     this.studentCount = studentCount;
     this.startTime = startTime;
     this.endTime = endTime;
@@ -40,6 +43,14 @@ public class ProfessorTodaySchedule {
 
   public void setCourseName(String courseName) {
     this.courseName = courseName;
+  }
+
+  public String getDivision() {
+    return division;
+  }
+
+  public void setDivision(String division) {
+    this.division = division;
   }
 
   public Integer getStudentCount() {

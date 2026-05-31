@@ -37,9 +37,9 @@ class ProfessorDashboardServiceTest {
   void dashboardReturnsProfessorSummarySchedulesAndAssignedCourses() {
     dashboardMapper.summary = new ProfessorDashboardSummary(3, 73, 100, 4.5, 5);
     dashboardMapper.todaySchedules.add(
-        new ProfessorTodaySchedule("CSE301", "Database", 28, "10:30", "12:00", "A 301"));
+        new ProfessorTodaySchedule("CSE301", "Database", "01분반", 28, "10:30", "12:00", "A 301"));
     dashboardMapper.todaySchedules.add(
-        new ProfessorTodaySchedule("CSE401", "Database Design", 20, "13:00", "14:30", "B 205"));
+        new ProfessorTodaySchedule("CSE401", "Database Design", "01분반", 20, "13:00", "14:30", "B 205"));
     dashboardMapper.assignedCourses.add(
         new ProfessorAssignedCourse("CSE301", "Database", "01분반", 28, 35, 4.5));
     dashboardMapper.assignedCourses.add(
@@ -57,6 +57,7 @@ class ProfessorDashboardServiceTest {
     assertThat(response.avgSatisfaction()).isEqualTo(4.5);
     assertThat(response.newReviewCount()).isEqualTo(5);
     assertThat(response.todaySchedule()).hasSize(2);
+    assertThat(response.todaySchedule().get(0).division()).isEqualTo("01분반");
     assertThat(response.todaySchedule().get(0).scheduleStatus()).isEqualTo("IN_PROGRESS");
     assertThat(response.todaySchedule().get(1).scheduleStatus()).isEqualTo("SCHEDULED");
     assertThat(response.assignedCourses()).hasSize(2);

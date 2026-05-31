@@ -25,6 +25,10 @@
     </constructor>
   </resultMap>
 
+  <sql id="divisionCondition">
+    (cs.section_no = #{division} OR cs.section_no || '분반' = #{division})
+  </sql>
+
   <select id="findCourse" resultMap="ExportCourseResultMap">
     SELECT
       c.course_name,
@@ -42,6 +46,7 @@
     JOIN semester sm ON sm.semester_id = cs.semester_id
     WHERE p.user_id = #{professorUserId}
       AND c.course_code = #{courseId}
+      AND <include refid="divisionCondition" />
       AND cs.status != 'CANCELLED'
       AND sm.is_current = 1
     GROUP BY c.course_name, c.course_code, sm.year, sm.term
@@ -66,6 +71,7 @@
     JOIN department d ON d.dept_id = s.dept_id
     WHERE p.user_id = #{professorUserId}
       AND c.course_code = #{courseId}
+      AND <include refid="divisionCondition" />
       AND cs.status != 'CANCELLED'
       AND sm.is_current = 1
       AND e.status = 'ENROLLED'

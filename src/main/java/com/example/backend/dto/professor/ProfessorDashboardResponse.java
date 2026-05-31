@@ -14,6 +14,7 @@ public record ProfessorDashboardResponse(
   public record TodayScheduleItem(
       String courseId,
       String courseName,
+      String division,
       int studentCount,
       String startTime,
       String endTime,

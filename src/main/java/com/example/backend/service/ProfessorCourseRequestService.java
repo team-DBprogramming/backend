@@ -34,18 +34,21 @@ public class ProfessorCourseRequestService {
 
   @Transactional(readOnly = true)
   public CourseRequestListResponse getRequests(
-      AuthenticatedUser currentUser, String courseId, Integer page, Integer size) {
+      AuthenticatedUser currentUser, String courseId, String division, Integer page, Integer size) {
     Long professorUserId = currentUser.requireProfessorUserId();
+    String normalizedDivision = normalizeRequiredDivision(division);
     int currentPage = positiveOrDefault(page, 1);
     int pageSize = positiveOrDefault(size, 20);
     int offset = (currentPage - 1) * pageSize;
 
-    CourseRequestSummary summary = requestMapper.findRequestSummary(professorUserId, courseId);
+    CourseRequestSummary summary =
+        requestMapper.findRequestSummary(professorUserId, courseId, normalizedDivision);
     if (summary == null) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
     }
     List<CourseRequestItem> requests =
-        requestMapper.findPendingRequests(professorUserId, courseId, pageSize, offset);
+        requestMapper.findPendingRequests(
+            professorUserId, courseId, normalizedDivision, pageSize, offset);
     return new CourseRequestListResponse(summary, requests);
   }
 
@@ -53,14 +56,16 @@ public class ProfessorCourseRequestService {
   public CourseRequestDecisionResponse decideRequest(
       AuthenticatedUser currentUser,
       String courseId,
+      String division,
       String requestId,
       CourseRequestDecisionRequest request) {
     Long professorUserId = currentUser.requireProfessorUserId();
+    String normalizedDivision = normalizeRequiredDivision(division);
     String status = normalizeStatus(request);
     Instant now = clock.instant();
 
     ProfessorCourseRequestInfo info =
-        requestMapper.findRequestForProfessor(professorUserId, courseId, requestId);
+        requestMapper.findRequestForProfessor(professorUserId, courseId, normalizedDivision, requestId);
     if (info == null) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
     }
@@ -69,7 +74,8 @@ public class ProfessorCourseRequestService {
     }
 
     int updated =
-        requestMapper.updatePendingRequestStatus(professorUserId, courseId, requestId, status, now);
+        requestMapper.updatePendingRequestStatus(
+            professorUserId, courseId, normalizedDivision, requestId, status, now);
     if (updated <= 0) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_ALREADY_PROCESSED);
     }
@@ -96,6 +102,13 @@ public class ProfessorCourseRequestService {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_INVALID_STATUS);
     }
     return status;
+  }
+
+  private String normalizeRequiredDivision(String division) {
+    if (isBlank(division)) {
+      throw new ProfessorHandler(ErrorStatus.PROFESSOR_DIVISION_REQUIRED);
+    }
+    return division.trim();
   }
 
   private String notificationTitle(String courseName, String status) {
