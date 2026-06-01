@@ -7,6 +7,8 @@
   <resultMap id="TimetableResultMap" type="com.example.backend.dto.student.StudentTimetableItem">
     <result property="courseId" column="course_id" />
     <result property="courseName" column="course_name" />
+    <result property="courseType" column="course_type" />
+    <result property="credit" column="credit" />
     <result property="professor" column="professor" />
     <result property="division" column="division" />
     <result property="dayOfWeek" column="day_of_week" />
@@ -19,6 +21,8 @@
     SELECT
       c.course_code AS course_id,
       c.course_name,
+      c.course_type,
+      c.credits AS credit,
       p.name AS professor,
       cs.section_no || '분반' AS division,
       ss.day_of_week,
@@ -78,6 +82,8 @@
       SELECT
         c.course_code AS course_id,
         c.course_name,
+        c.course_type,
+        c.credits AS credit,
         p.name AS professor,
         cs.section_no || '분반' AS division,
         ss.day_of_week,
