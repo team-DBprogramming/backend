@@ -13,7 +13,7 @@ public interface StudentReviewMapper {
 
   Long findEnrollmentId(@Param("studentId") Long studentId, @Param("courseId") String courseId);
 
-  List<StudentReviewItem> findReviews(@Param("userId") Long userId);
+  List<StudentReviewItem> findReviews(@Param("userId") Long userId, @Param("semester") String semester);
 
   void insertReview(@Param("enrollmentId") Long enrollmentId, @Param("request") StudentReviewRequest request);
 

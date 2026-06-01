@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,9 +33,12 @@ public class StudentReviewController {
   @GetMapping("/students/me/reviews")
   @Operation(summary = "내 강의평가 목록", description = "현재 로그인한 학생의 강의평가 제출/미제출 목록을 조회합니다.")
   public StudentApiResponse<StudentReviewListResponse> getReviews(
-      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails) {
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+      @Parameter(description = "조회 학기", example = "2026-1")
+          @RequestParam(value = "semester", required = false)
+          String semester) {
     return StudentApiResponse.success(
-        "S200", "강의평가 목록 조회 성공", reviewService.getReviews(userDetails.toAuthenticatedUser()));
+        "S200", "강의평가 목록 조회 성공", reviewService.getReviews(userDetails.toAuthenticatedUser(), semester));
   }
 
   @PostMapping("/courses/{courseId}/reviews")
