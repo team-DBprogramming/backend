@@ -20,11 +20,23 @@
   <resultMap id="TimetableResultMap" type="com.example.backend.dto.student.StudentTimetableItem">
     <result property="courseId" column="course_id" />
     <result property="courseName" column="course_name" />
+    <result property="courseType" column="course_type" />
+    <result property="credit" column="credit" />
     <result property="professor" column="professor" />
     <result property="division" column="division" />
     <result property="dayOfWeek" column="day_of_week" />
     <result property="startTime" column="start_time" />
     <result property="endTime" column="end_time" />
+    <result property="room" column="room" />
+  </resultMap>
+
+  <resultMap id="EnrolledCourseResultMap" type="com.example.backend.dto.student.StudentEnrolledCourse">
+    <result property="courseId" column="course_id" />
+    <result property="courseName" column="course_name" />
+    <result property="credit" column="credit" />
+    <result property="schedule" column="schedule" />
+    <result property="registeredAt" column="registered_at" />
+    <result property="professor" column="professor" />
     <result property="room" column="room" />
   </resultMap>
 
@@ -146,10 +158,45 @@
     WHERE s.user_id = #{userId}
   </select>
 
+  <select id="findEnrolledCourses" resultMap="EnrolledCourseResultMap">
+    SELECT
+      c.course_code AS course_id,
+      c.course_name,
+      c.credits AS credit,
+      (
+        SELECT LISTAGG(ss.day_of_week || ' ' || ss.start_time || '-' || ss.end_time, ', ')
+          WITHIN GROUP (ORDER BY ss.day_of_week, ss.start_time)
+        FROM section_schedule ss
+        WHERE ss.section_id = cs.section_id
+      ) AS schedule,
+      TO_CHAR(e.enrolled_at, 'YYYY-MM-DD HH24:MI:SS') AS registered_at,
+      p.name AS professor,
+      (
+        SELECT LISTAGG(room_name, ', ') WITHIN GROUP (ORDER BY room_name)
+        FROM (
+          SELECT DISTINCT cr.building || ' ' || cr.room_no AS room_name
+          FROM section_schedule ss
+          JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+          WHERE ss.section_id = cs.section_id
+        )
+      ) AS room
+    FROM student s
+    JOIN enrollment e ON e.student_id = s.student_id AND e.status = 'ENROLLED'
+    JOIN course_section cs ON cs.section_id = e.section_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN professor p ON p.professor_id = cs.professor_id
+    WHERE s.user_id = #{userId}
+      AND sm.is_current = 1
+    ORDER BY e.enrolled_at DESC
+  </select>
+
   <select id="findEnrollmentTimetable" resultMap="TimetableResultMap">
     SELECT
       c.course_code AS course_id,
       c.course_name,
+      c.course_type,
+      c.credits AS credit,
       p.name AS professor,
       cs.section_no || '분반' AS division,
       ss.day_of_week,

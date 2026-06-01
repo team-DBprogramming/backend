@@ -4,6 +4,8 @@ public class StudentTimetableItem {
 
   private String courseId;
   private String courseName;
+  private String courseType;
+  private Integer credit;
   private String professor;
   private String division;
   private String dayOfWeek;
@@ -27,6 +29,22 @@ public class StudentTimetableItem {
 
   public void setCourseName(String courseName) {
     this.courseName = courseName;
+  }
+
+  public String getCourseType() {
+    return courseType;
+  }
+
+  public void setCourseType(String courseType) {
+    this.courseType = courseType;
+  }
+
+  public Integer getCredit() {
+    return credit;
+  }
+
+  public void setCredit(Integer credit) {
+    this.credit = credit;
   }
 
   public String getProfessor() {
