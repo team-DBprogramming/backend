@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.StudentDashboardMapper">
+  <resultMap id="StudentInfoResultMap" type="com.example.backend.dto.student.StudentInfo">
+    <result property="name" column="name" />
+    <result property="major" column="major" />
+    <result property="grade" column="grade" />
+    <result property="currentSemester" column="current_semester" />
+  </resultMap>
+
+  <resultMap id="EnrollmentStatusResultMap" type="com.example.backend.dto.student.StudentEnrollmentStatus">
+    <result property="status" column="status" />
+    <result property="deadline" column="deadline" />
+    <result property="daysLeft" column="days_left" />
+  </resultMap>
+
+  <resultMap id="CreditSummaryResultMap" type="com.example.backend.dto.student.StudentCreditSummary">
+    <result property="applied" column="applied" />
+    <result property="max" column="max_credits" />
+    <result property="courseCount" column="course_count" />
+    <result property="cartCount" column="cart_count" />
+  </resultMap>
+
+  <resultMap id="TodayScheduleResultMap" type="com.example.backend.dto.student.StudentTodaySchedule">
+    <result property="courseId" column="course_id" />
+    <result property="courseName" column="course_name" />
+    <result property="professor" column="professor" />
+    <result property="startTime" column="start_time" />
+    <result property="endTime" column="end_time" />
+    <result property="room" column="room" />
+  </resultMap>
+
+  <resultMap id="QuickActionsResultMap" type="com.example.backend.dto.student.StudentQuickActions">
+    <result property="cartCount" column="cart_count" />
+    <result property="reviewPendingCount" column="review_pending_count" />
+  </resultMap>
+
+  <sql id="currentSemesterCondition">
+    sm.is_current = 1
+  </sql>
+
+  <select id="findStudentInfo" resultMap="StudentInfoResultMap">
+    SELECT
+      s.name,
+      d.dept_name AS major,
+      s.year_level AS grade,
+      TO_CHAR(sm.year) || '-' ||
+        CASE sm.term
+          WHEN 'SPRING' THEN '1'
+          WHEN 'FALL' THEN '2'
+          ELSE sm.term
+        END || '학기' AS current_semester
+    FROM student s
+    JOIN department d ON d.dept_id = s.dept_id
+    CROSS JOIN semester sm
+    WHERE s.user_id = #{userId}
+      AND <include refid="currentSemesterCondition" />
+  </select>
+
+  <select id="findEnrollmentStatus" resultMap="EnrollmentStatusResultMap">
+    SELECT
+      CASE
+        WHEN SYSTIMESTAMP BETWEEN rp.start_at AND rp.end_at THEN 'IN_PROGRESS'
+        WHEN SYSTIMESTAMP <![CDATA[<]]> rp.start_at THEN 'NOT_STARTED'
+        ELSE 'CLOSED'
+      END AS status,
+      TO_CHAR(CAST(rp.end_at AS DATE), 'YYYY-MM-DD') AS deadline,
+      GREATEST(0, CEIL(CAST(rp.end_at AS DATE) - SYSDATE)) AS days_left
+    FROM student s
+    JOIN semester sm ON <include refid="currentSemesterCondition" />
+    JOIN registration_period rp ON rp.semester_id = sm.semester_id
+    WHERE s.user_id = #{userId}
+      AND rp.period_type IN ('MAIN', 'ADD_DROP')
+      AND (rp.target_year IS NULL OR rp.target_year = s.year_level)
+    ORDER BY
+      CASE
+        WHEN SYSTIMESTAMP BETWEEN rp.start_at AND rp.end_at THEN 1
+        WHEN SYSTIMESTAMP <![CDATA[<]]> rp.start_at THEN 2
+        ELSE 3
+      END,
+      rp.end_at
+    FETCH FIRST 1 ROW ONLY
+  </select>
+
+  <select id="findCreditSummary" resultMap="CreditSummaryResultMap">
+    SELECT
+      (
+        SELECT COALESCE(SUM(c.credits), 0)
+        FROM enrollment e
+        JOIN course_section cs ON cs.section_id = e.section_id
+        JOIN semester sm ON sm.semester_id = cs.semester_id
+        JOIN course c ON c.course_id = cs.course_id
+        WHERE e.student_id = s.student_id
+          AND e.status = 'ENROLLED'
+          AND <include refid="currentSemesterCondition" />
+      ) AS applied,
+      #{maxCredits} AS max_credits,
+      (
+        SELECT COUNT(*)
+        FROM enrollment e
+        JOIN course_section cs ON cs.section_id = e.section_id
+        JOIN semester sm ON sm.semester_id = cs.semester_id
+        WHERE e.student_id = s.student_id
+          AND e.status = 'ENROLLED'
+          AND <include refid="currentSemesterCondition" />
+      ) AS course_count,
+      (
+        SELECT COUNT(*)
+        FROM cart_item ci
+        JOIN course_section ccs ON ccs.section_id = ci.section_id
+        JOIN semester csm ON csm.semester_id = ccs.semester_id
+        WHERE ci.student_id = s.student_id
+          AND csm.is_current = 1
+      ) AS cart_count
+    FROM student s
+    WHERE s.user_id = #{userId}
+  </select>
+
+  <select id="findTodaySchedules" resultMap="TodayScheduleResultMap">
+    SELECT
+      c.course_code AS course_id,
+      c.course_name,
+      p.name AS professor,
+      ss.start_time,
+      ss.end_time,
+      cr.building || ' ' || cr.room_no AS room
+    FROM student s
+    JOIN enrollment e ON e.student_id = s.student_id AND e.status = 'ENROLLED'
+    JOIN course_section cs ON cs.section_id = e.section_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN professor p ON p.professor_id = cs.professor_id
+    JOIN section_schedule ss ON ss.section_id = cs.section_id
+    JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+    WHERE s.user_id = #{userId}
+      AND cs.status != 'CANCELLED'
+      AND ss.day_of_week = #{dayOfWeek}
+      AND <include refid="currentSemesterCondition" />
+    ORDER BY ss.start_time, c.course_name
+  </select>
+
+  <select id="findQuickActions" resultMap="QuickActionsResultMap">
+    SELECT
+      (
+        SELECT COUNT(*)
+        FROM cart_item ci
+        JOIN course_section cs ON cs.section_id = ci.section_id
+        JOIN semester sm ON sm.semester_id = cs.semester_id
+        WHERE ci.student_id = s.student_id
+          AND <include refid="currentSemesterCondition" />
+      ) AS cart_count,
+      (
+        SELECT COUNT(*)
+        FROM enrollment e
+        JOIN course_section cs ON cs.section_id = e.section_id
+        JOIN semester sm ON sm.semester_id = cs.semester_id
+        LEFT JOIN review r ON r.enrollment_id = e.enrollment_id
+        WHERE e.student_id = s.student_id
+          AND e.status = 'ENROLLED'
+          AND r.review_id IS NULL
+          AND <include refid="currentSemesterCondition" />
+      ) AS review_pending_count
+    FROM student s
+    WHERE s.user_id = #{userId}
+  </select>
+</mapper>
