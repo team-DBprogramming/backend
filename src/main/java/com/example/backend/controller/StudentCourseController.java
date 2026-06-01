@@ -10,6 +10,7 @@ import com.example.backend.service.StudentCourseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,8 +39,8 @@ public class StudentCourseController {
       @RequestParam(value = "courseCategory", required = false) String courseCategory,
       @RequestParam(value = "major", required = false) String major,
       @RequestParam(value = "courseType", required = false) String courseType,
-      @RequestParam(value = "day", required = false) String day,
-      @RequestParam(value = "credit", required = false) Integer credit,
+      @RequestParam(value = "day", required = false) List<String> day,
+      @RequestParam(value = "credit", required = false) List<Integer> credit,
       @RequestParam(value = "startTime", required = false) String startTime,
       @RequestParam(value = "endTime", required = false) String endTime,
       @RequestParam(value = "sort", required = false) String sort,

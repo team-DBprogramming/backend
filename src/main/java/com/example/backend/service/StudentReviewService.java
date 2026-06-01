@@ -1,8 +1,8 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.student.StudentMutationResponse;
 import com.example.backend.dto.student.StudentReviewListResponse;
 import com.example.backend.dto.student.StudentReviewRequest;
+import com.example.backend.dto.student.StudentReviewSubmitResponse;
 import com.example.backend.mapper.StudentReviewMapper;
 import com.example.backend.security.AuthenticatedUser;
 import java.util.List;
@@ -32,13 +32,14 @@ public class StudentReviewService {
   }
 
   @Transactional
-  public StudentMutationResponse submitReview(
+  public StudentReviewSubmitResponse submitReview(
       AuthenticatedUser currentUser, String courseId, StudentReviewRequest request) {
     Long studentId = reviewMapper.findStudentId(currentUser.requireStudentUserId());
     Long enrollmentId = reviewMapper.findEnrollmentId(studentId, courseId);
     reviewMapper.insertReview(enrollmentId, request);
     Long reviewId = reviewMapper.findLatestReviewId(enrollmentId);
-    return new StudentMutationResponse(String.valueOf(reviewId), "SUBMITTED");
+    String submittedAt = reviewMapper.findLatestReviewSubmittedAt(enrollmentId);
+    return new StudentReviewSubmitResponse(String.valueOf(reviewId), submittedAt);
   }
 
   private String normalize(String value) {

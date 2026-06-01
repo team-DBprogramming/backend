@@ -2,6 +2,7 @@ package com.example.backend.service;
 
 import com.example.backend.dto.student.StudentBorrowRequest;
 import com.example.backend.dto.student.StudentCourseDetailResponse;
+import com.example.backend.dto.student.StudentCourseReviewItem;
 import com.example.backend.dto.student.StudentCourseListResponse;
 import com.example.backend.dto.student.StudentCourseSchedule;
 import com.example.backend.dto.student.StudentCourseSummary;
@@ -29,8 +30,8 @@ public class StudentCourseService {
       String courseCategory,
       String major,
       String courseType,
-      String day,
-      Integer credit,
+      List<String> days,
+      List<Integer> credits,
       String startTime,
       String endTime,
       String sort,
@@ -39,6 +40,8 @@ public class StudentCourseService {
     int normalizedPage = page == null || page < 1 ? 1 : page;
     int normalizedSize = size == null || size < 1 ? 20 : size;
     int offset = (normalizedPage - 1) * normalizedSize;
+    List<String> normalizedDays = normalizeStrings(days);
+    List<Integer> normalizedCredits = normalizeIntegers(credits);
     Integer total =
         courseMapper.countCourses(
             normalize(semester),
@@ -46,8 +49,8 @@ public class StudentCourseService {
             normalize(courseCategory),
             normalize(major),
             normalize(courseType),
-            normalize(day),
-            credit,
+            normalizedDays,
+            normalizedCredits,
             normalize(startTime),
             normalize(endTime));
     List<StudentCourseSummary> courses =
@@ -57,8 +60,8 @@ public class StudentCourseService {
             normalize(courseCategory),
             normalize(major),
             normalize(courseType),
-            normalize(day),
-            credit,
+            normalizedDays,
+            normalizedCredits,
             normalize(startTime),
             normalize(endTime),
             normalize(sort),
@@ -76,6 +79,7 @@ public class StudentCourseService {
     String normalizedDivision = normalizeDivision(division);
     StudentCourseSummary course = courseMapper.findCourse(courseId, normalizedDivision);
     List<StudentCourseSchedule> schedules = courseMapper.findSchedules(courseId, normalizedDivision);
+    List<StudentCourseReviewItem> reviews = courseMapper.findCourseReviews(courseId, normalizedDivision);
     boolean enrollable = course != null && course.getCapacity() != null && course.getEnrolled() != null
         && course.getEnrolled() < course.getCapacity();
     return new StudentCourseDetailResponse(
@@ -113,7 +117,7 @@ public class StudentCourseService {
             enrollable ? null : "정원 초과로 인해 수강 요청 가능",
             "NONE",
             false),
-        List.of());
+        reviews);
   }
 
   @Transactional
@@ -143,6 +147,23 @@ public class StudentCourseService {
     return schedules.stream()
         .map(schedule -> new StudentLectureTime(schedule.getDayOfWeek(), schedule.getStartTime(), schedule.getEndTime()))
         .toList();
+  }
+
+  private List<String> normalizeStrings(List<String> values) {
+    if (values == null) {
+      return List.of();
+    }
+    return values.stream()
+        .map(this::normalize)
+        .filter(value -> value != null)
+        .toList();
+  }
+
+  private List<Integer> normalizeIntegers(List<Integer> values) {
+    if (values == null) {
+      return List.of();
+    }
+    return values.stream().filter(value -> value != null).toList();
   }
 
   private boolean isBlank(String value) {

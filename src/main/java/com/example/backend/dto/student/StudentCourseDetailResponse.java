@@ -8,7 +8,7 @@ public record StudentCourseDetailResponse(
     Syllabus syllabus,
     EnrollmentEligibility enrollmentEligibility,
     RequestInfo requestInfo,
-    List<StudentReviewItem> reviews) {
+    List<StudentCourseReviewItem> reviews) {
 
   public record Overview(
       String courseName,

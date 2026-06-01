@@ -1,6 +1,7 @@
 package com.example.backend.mapper;
 
 import com.example.backend.dto.student.StudentCourseSchedule;
+import com.example.backend.dto.student.StudentCourseReviewItem;
 import com.example.backend.dto.student.StudentCourseSummary;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
@@ -15,8 +16,8 @@ public interface StudentCourseMapper {
       @Param("courseCategory") String courseCategory,
       @Param("major") String major,
       @Param("courseType") String courseType,
-      @Param("day") String day,
-      @Param("credit") Integer credit,
+      @Param("days") List<String> days,
+      @Param("credits") List<Integer> credits,
       @Param("startTime") String startTime,
       @Param("endTime") String endTime,
       @Param("sort") String sort,
@@ -29,8 +30,8 @@ public interface StudentCourseMapper {
       @Param("courseCategory") String courseCategory,
       @Param("major") String major,
       @Param("courseType") String courseType,
-      @Param("day") String day,
-      @Param("credit") Integer credit,
+      @Param("days") List<String> days,
+      @Param("credits") List<Integer> credits,
       @Param("startTime") String startTime,
       @Param("endTime") String endTime);
 
@@ -48,6 +49,9 @@ public interface StudentCourseMapper {
   String findPrerequisite(@Param("courseId") String courseId);
 
   List<StudentCourseSchedule> findSchedules(
+      @Param("courseId") String courseId, @Param("division") String division);
+
+  List<StudentCourseReviewItem> findCourseReviews(
       @Param("courseId") String courseId, @Param("division") String division);
 
   Long findStudentId(@Param("userId") Long userId);
