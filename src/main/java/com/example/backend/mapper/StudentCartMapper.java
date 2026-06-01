@@ -20,7 +20,12 @@ public interface StudentCartMapper {
 
   int countCart(@Param("studentId") Long studentId);
 
-  int insertEnrollmentsFromCart(@Param("studentId") Long studentId);
+  int countSelectedCart(
+      @Param("studentId") Long studentId, @Param("cartItemIds") java.util.List<Long> cartItemIds);
 
-  int updateEnrolledCountsFromCart(@Param("studentId") Long studentId);
+  int insertEnrollmentsFromCart(
+      @Param("studentId") Long studentId, @Param("cartItemIds") java.util.List<Long> cartItemIds);
+
+  int updateEnrolledCountsFromCart(
+      @Param("studentId") Long studentId, @Param("cartItemIds") java.util.List<Long> cartItemIds);
 }

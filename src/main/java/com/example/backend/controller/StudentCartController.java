@@ -1,6 +1,7 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.student.StudentApiResponse;
+import com.example.backend.dto.student.StudentBulkEnrollRequest;
 import com.example.backend.dto.student.StudentBulkEnrollResponse;
 import com.example.backend.dto.student.StudentCartAddRequest;
 import com.example.backend.dto.student.StudentCartListResponse;
@@ -62,8 +63,9 @@ public class StudentCartController {
   @PostMapping("/bulk-enroll")
   @Operation(summary = "장바구니 일괄 수강신청", description = "장바구니에 담긴 강의를 일괄 수강신청합니다.")
   public StudentApiResponse<StudentBulkEnrollResponse> bulkEnroll(
-      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails) {
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+      @RequestBody(required = false) StudentBulkEnrollRequest request) {
     return StudentApiResponse.success(
-        "S200", "장바구니 일괄 수강신청 성공", cartService.bulkEnroll(userDetails.toAuthenticatedUser()));
+        "S200", "장바구니 일괄 수강신청 성공", cartService.bulkEnroll(userDetails.toAuthenticatedUser(), request));
   }
 }

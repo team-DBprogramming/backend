@@ -1,6 +1,7 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.student.StudentBulkEnrollResponse;
+import com.example.backend.dto.student.StudentBulkEnrollRequest;
 import com.example.backend.dto.student.StudentCartAddRequest;
 import com.example.backend.dto.student.StudentCartItem;
 import com.example.backend.dto.student.StudentCartListResponse;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudentCartService {
 
   private final StudentCartMapper cartMapper;
+  private static final int MAX_CREDITS = 21;
 
   public StudentCartService(StudentCartMapper cartMapper) {
     this.cartMapper = cartMapper;
@@ -25,7 +27,7 @@ public class StudentCartService {
     Long studentId = cartMapper.findStudentId(currentUser.requireStudentUserId());
     List<StudentCartItem> items = cartMapper.findCartItems(studentId);
     int totalCredits = items.stream().map(StudentCartItem::getCredit).filter(v -> v != null).mapToInt(v -> v).sum();
-    return new StudentCartListResponse(items, totalCredits, items.size());
+    return new StudentCartListResponse(items, totalCredits, MAX_CREDITS);
   }
 
   @Transactional
@@ -44,12 +46,23 @@ public class StudentCartService {
   }
 
   @Transactional
-  public StudentBulkEnrollResponse bulkEnroll(AuthenticatedUser currentUser) {
+  public StudentBulkEnrollResponse bulkEnroll(AuthenticatedUser currentUser, StudentBulkEnrollRequest request) {
     Long studentId = cartMapper.findStudentId(currentUser.requireStudentUserId());
-    int requested = cartMapper.countCart(studentId);
-    int enrolled = cartMapper.insertEnrollmentsFromCart(studentId);
-    cartMapper.updateEnrolledCountsFromCart(studentId);
-    return new StudentBulkEnrollResponse(requested, enrolled);
+    List<Long> cartItemIds = request == null ? null : request.cartItemIds();
+    int requested =
+        cartItemIds == null || cartItemIds.isEmpty()
+            ? cartMapper.countCart(studentId)
+            : cartMapper.countSelectedCart(studentId, cartItemIds);
+    int enrolled = cartMapper.insertEnrollmentsFromCart(studentId, cartItemIds);
+    cartMapper.updateEnrolledCountsFromCart(studentId, cartItemIds);
+    return new StudentBulkEnrollResponse(
+        List.of(
+            new StudentBulkEnrollResponse.Result(
+                null,
+                enrolled > 0,
+                enrolled > 0 ? "수강신청 성공" : "신청 가능한 장바구니 항목이 없습니다",
+                enrolled > 0 ? null : "NOT_APPLICABLE")),
+        new StudentBulkEnrollResponse.Summary(requested, enrolled, Math.max(0, requested - enrolled)));
   }
 
   private String normalizeDivision(String division) {
