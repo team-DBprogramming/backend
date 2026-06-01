@@ -20,6 +20,7 @@ public enum ErrorStatus implements BaseErrorCode {
   AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH4011", "아이디 또는 비밀번호가 올바르지 않습니다."),
   AUTH_INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH4012", "유효하지 않은 토큰입니다."),
   AUTH_MISSING_ROLE(HttpStatus.UNAUTHORIZED, "AUTH4013", "아이디 또는 비밀번호가 올바르지 않습니다."),
+  NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION4041", "알림을 찾을 수 없습니다."),
   PROFESSOR_REQUEST_ALREADY_PROCESSED(
       HttpStatus.BAD_REQUEST, "PROFESSOR4001", "이미 승인 또는 거절 처리가 완료된 수강 요청입니다."),
   PROFESSOR_REQUEST_INVALID_STATUS(
@@ -27,6 +28,10 @@ public enum ErrorStatus implements BaseErrorCode {
   PROFESSOR_EXPORT_INVALID_FORMAT(
       HttpStatus.BAD_REQUEST, "PROFESSOR4003", "다운로드 형식은 xlsx 또는 csv만 가능합니다."),
   PROFESSOR_DIVISION_REQUIRED(HttpStatus.BAD_REQUEST, "PROFESSOR4005", "분반을 입력해주세요."),
+  PROFESSOR_MESSAGE_INVALID_RECIPIENT(
+      HttpStatus.BAD_REQUEST, "PROFESSOR4006", "메시지 수신 대상이 올바르지 않습니다."),
+  PROFESSOR_MESSAGE_INVALID_REQUEST(
+      HttpStatus.BAD_REQUEST, "PROFESSOR4007", "메시지 전송 정보를 입력해주세요."),
   PROFESSOR_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "PROFESSOR4041", "수강 요청을 찾을 수 없습니다."),
   PROFESSOR_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "PROFESSOR4042", "담당 강의가 없습니다."),
   PROFESSOR_FORBIDDEN(HttpStatus.FORBIDDEN, "PROFESSOR4031", "교수 권한이 필요합니다.");

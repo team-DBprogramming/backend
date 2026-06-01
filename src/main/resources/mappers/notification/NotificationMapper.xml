@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.NotificationMapper">
+  <resultMap id="NotificationItemResultMap" type="com.example.backend.dto.notification.NotificationItem">
+    <constructor>
+      <arg column="notification_id" javaType="java.lang.String" />
+      <arg column="title" javaType="java.lang.String" />
+      <arg column="body" javaType="java.lang.String" />
+      <arg column="type" javaType="java.lang.String" />
+      <arg column="is_read" javaType="_boolean" />
+      <arg column="created_at" javaType="java.lang.String" />
+      <arg column="target_section_id" javaType="java.lang.String" />
+      <arg column="target_request_id" javaType="java.lang.String" />
+    </constructor>
+  </resultMap>
+
+  <resultMap id="NotificationDetailResultMap" type="com.example.backend.dto.notification.NotificationDetailResponse">
+    <constructor>
+      <arg column="notification_id" javaType="java.lang.String" />
+      <arg column="title" javaType="java.lang.String" />
+      <arg column="body" javaType="java.lang.String" />
+      <arg column="type" javaType="java.lang.String" />
+      <arg column="is_read" javaType="_boolean" />
+      <arg column="created_at" javaType="java.lang.String" />
+      <arg column="sender_name" javaType="java.lang.String" />
+      <arg column="course_id" javaType="java.lang.String" />
+      <arg column="course_name" javaType="java.lang.String" />
+      <arg column="division" javaType="java.lang.String" />
+      <arg column="target_section_id" javaType="java.lang.String" />
+      <arg column="target_request_id" javaType="java.lang.String" />
+      <arg column="request_reason" javaType="java.lang.String" />
+    </constructor>
+  </resultMap>
+
+  <select id="findNotifications" resultMap="NotificationItemResultMap">
+    SELECT
+      TO_CHAR(notification_id) AS notification_id,
+      title,
+      DBMS_LOB.SUBSTR(body, 4000, 1) AS body,
+      type,
+      is_read,
+      TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
+      TO_CHAR(target_section_id) AS target_section_id,
+      TO_CHAR(target_request_id) AS target_request_id
+    FROM notification
+    WHERE recipient_user_id = #{recipientUserId}
+    ORDER BY created_at DESC, notification_id DESC
+  </select>
+
+  <select id="findNotification" resultMap="NotificationDetailResultMap">
+    SELECT
+      TO_CHAR(n.notification_id) AS notification_id,
+      n.title,
+      DBMS_LOB.SUBSTR(n.body, 4000, 1) AS body,
+      n.type,
+      n.is_read,
+      TO_CHAR(n.created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
+      COALESCE(sender_professor.name, sender_student.name, sender.login_id) AS sender_name,
+      c.course_code AS course_id,
+      c.course_name,
+      cs.section_no || '분반' AS division,
+      TO_CHAR(COALESCE(n.target_section_id, cr.section_id)) AS target_section_id,
+      TO_CHAR(n.target_request_id) AS target_request_id,
+      DBMS_LOB.SUBSTR(cr.reason, 4000, 1) AS request_reason
+    FROM notification n
+    LEFT JOIN user_account sender ON sender.user_id = n.sender_user_id
+    LEFT JOIN professor sender_professor ON sender_professor.user_id = sender.user_id
+    LEFT JOIN student sender_student ON sender_student.user_id = sender.user_id
+    LEFT JOIN course_request cr ON cr.request_id = n.target_request_id
+    LEFT JOIN course_section cs ON cs.section_id = COALESCE(n.target_section_id, cr.section_id)
+    LEFT JOIN course c ON c.course_id = cs.course_id
+    WHERE n.recipient_user_id = #{recipientUserId}
+      AND TO_CHAR(n.notification_id) = #{notificationId}
+  </select>
+
+  <update id="markAsRead">
+    UPDATE notification
+    SET is_read = 1
+    WHERE recipient_user_id = #{recipientUserId}
+      AND TO_CHAR(notification_id) = #{notificationId}
+  </update>
+</mapper>
