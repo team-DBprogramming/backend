@@ -10,6 +10,10 @@ public class StudentCartItem {
   private Integer credit;
   private String schedule;
   private String room;
+  private String seatStatus;
+  private Integer scrapped;
+  private String conflictWith;
+  private Boolean isApplicable;
 
   public StudentCartItem() {}
 
@@ -75,5 +79,37 @@ public class StudentCartItem {
 
   public void setRoom(String room) {
     this.room = room;
+  }
+
+  public String getSeatStatus() {
+    return seatStatus;
+  }
+
+  public void setSeatStatus(String seatStatus) {
+    this.seatStatus = seatStatus;
+  }
+
+  public Integer getScrapped() {
+    return scrapped;
+  }
+
+  public void setScrapped(Integer scrapped) {
+    this.scrapped = scrapped;
+  }
+
+  public String getConflictWith() {
+    return conflictWith;
+  }
+
+  public void setConflictWith(String conflictWith) {
+    this.conflictWith = conflictWith;
+  }
+
+  public Boolean getIsApplicable() {
+    return isApplicable;
+  }
+
+  public void setIsApplicable(Boolean applicable) {
+    isApplicable = applicable;
   }
 }

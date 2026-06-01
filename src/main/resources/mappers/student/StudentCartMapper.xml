@@ -13,6 +13,10 @@
     <result property="credit" column="credit" />
     <result property="schedule" column="schedule" />
     <result property="room" column="room" />
+    <result property="seatStatus" column="seat_status" />
+    <result property="scrapped" column="scrapped" />
+    <result property="conflictWith" column="conflict_with" />
+    <result property="isApplicable" column="is_applicable" />
   </resultMap>
 
   <select id="findStudentId" resultType="long">
@@ -54,7 +58,19 @@
           JOIN classroom cr ON cr.classroom_id = ss.classroom_id
           WHERE ss.section_id = cs.section_id
         )
-      ) AS room
+      ) AS room,
+      CASE
+        WHEN COALESCE(cs.enrolled_count, 0) <![CDATA[>=]]> cs.capacity THEN 'FULL'
+        WHEN cs.capacity - COALESCE(cs.enrolled_count, 0) <![CDATA[<=]]> 5 THEN 'CLOSING_SOON'
+        ELSE 'AVAILABLE'
+      END AS seat_status,
+      (
+        SELECT COUNT(*)
+        FROM cart_item ci2
+        WHERE ci2.section_id = cs.section_id
+      ) AS scrapped,
+      NULL AS conflict_with,
+      CASE WHEN COALESCE(cs.enrolled_count, 0) <![CDATA[<]]> cs.capacity THEN 1 ELSE 0 END AS is_applicable
     FROM cart_item ci
     JOIN course_section cs ON cs.section_id = ci.section_id
     JOIN semester sm ON sm.semester_id = cs.semester_id
@@ -82,12 +98,28 @@
     WHERE student_id = #{studentId}
   </select>
 
+  <select id="countSelectedCart" resultType="int">
+    SELECT COUNT(*)
+    FROM cart_item
+    WHERE student_id = #{studentId}
+      AND cart_id IN
+      <foreach collection="cartItemIds" item="cartItemId" open="(" separator="," close=")">
+        #{cartItemId}
+      </foreach>
+  </select>
+
   <insert id="insertEnrollmentsFromCart">
     INSERT INTO enrollment (student_id, section_id, status, enrolled_at)
     SELECT ci.student_id, ci.section_id, 'ENROLLED', SYSTIMESTAMP
     FROM cart_item ci
     JOIN course_section cs ON cs.section_id = ci.section_id
     WHERE ci.student_id = #{studentId}
+      <if test="cartItemIds != null and cartItemIds.size() > 0">
+        AND ci.cart_id IN
+        <foreach collection="cartItemIds" item="cartItemId" open="(" separator="," close=")">
+          #{cartItemId}
+        </foreach>
+      </if>
       AND cs.enrolled_count <![CDATA[<]]> cs.capacity
       AND NOT EXISTS (
         SELECT 1
@@ -110,6 +142,12 @@
       SELECT section_id
       FROM cart_item
       WHERE student_id = #{studentId}
+        <if test="cartItemIds != null and cartItemIds.size() > 0">
+          AND cart_id IN
+          <foreach collection="cartItemIds" item="cartItemId" open="(" separator="," close=")">
+            #{cartItemId}
+          </foreach>
+        </if>
     )
   </update>
 </mapper>
