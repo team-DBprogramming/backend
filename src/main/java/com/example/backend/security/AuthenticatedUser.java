@@ -3,6 +3,7 @@ package com.example.backend.security;
 import com.example.backend.apiPayload.code.status.ErrorStatus;
 import com.example.backend.apiPayload.exception.handler.AuthHandler;
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
+import com.example.backend.apiPayload.exception.handler.StudentHandler;
 import org.springframework.security.core.Authentication;
 
 public record AuthenticatedUser(Long userId, String loginId, String role) {
@@ -23,6 +24,13 @@ public record AuthenticatedUser(Long userId, String loginId, String role) {
   public Long requireProfessorUserId() {
     if (!"PROFESSOR".equals(role)) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_FORBIDDEN);
+    }
+    return userId;
+  }
+
+  public Long requireStudentUserId() {
+    if (!"STUDENT".equals(role)) {
+      throw new StudentHandler(ErrorStatus.STUDENT_FORBIDDEN);
     }
     return userId;
   }
