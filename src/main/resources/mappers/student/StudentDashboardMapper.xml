@@ -38,8 +38,16 @@
     <result property="reviewPendingCount" column="review_pending_count" />
   </resultMap>
 
-  <sql id="currentSemesterCondition">
-    sm.is_current = 1
+  <sql id="semesterCondition">
+    (
+      (#{semester} IS NULL AND sm.is_current = 1)
+      OR (#{semester} IS NOT NULL AND TO_CHAR(sm.year) || '-' ||
+        CASE sm.term
+          WHEN 'SPRING' THEN '1'
+          WHEN 'FALL' THEN '2'
+          ELSE sm.term
+        END || '학기' = #{semester})
+    )
   </sql>
 
   <select id="findStudentInfo" resultMap="StudentInfoResultMap">
@@ -57,7 +65,7 @@
     JOIN department d ON d.dept_id = s.dept_id
     CROSS JOIN semester sm
     WHERE s.user_id = #{userId}
-      AND <include refid="currentSemesterCondition" />
+      AND <include refid="semesterCondition" />
   </select>
 
   <select id="findEnrollmentStatus" resultMap="EnrollmentStatusResultMap">
@@ -70,7 +78,7 @@
       TO_CHAR(CAST(rp.end_at AS DATE), 'YYYY-MM-DD') AS deadline,
       GREATEST(0, CEIL(CAST(rp.end_at AS DATE) - SYSDATE)) AS days_left
     FROM student s
-    JOIN semester sm ON <include refid="currentSemesterCondition" />
+    JOIN semester sm ON <include refid="semesterCondition" />
     JOIN registration_period rp ON rp.semester_id = sm.semester_id
     WHERE s.user_id = #{userId}
       AND rp.period_type IN ('MAIN', 'ADD_DROP')
@@ -95,7 +103,7 @@
         JOIN course c ON c.course_id = cs.course_id
         WHERE e.student_id = s.student_id
           AND e.status = 'ENROLLED'
-          AND <include refid="currentSemesterCondition" />
+          AND <include refid="semesterCondition" />
       ) AS applied,
       #{maxCredits} AS max_credits,
       (
@@ -105,7 +113,7 @@
         JOIN semester sm ON sm.semester_id = cs.semester_id
         WHERE e.student_id = s.student_id
           AND e.status = 'ENROLLED'
-          AND <include refid="currentSemesterCondition" />
+          AND <include refid="semesterCondition" />
       ) AS course_count,
       (
         SELECT COUNT(*)
@@ -113,7 +121,15 @@
         JOIN course_section ccs ON ccs.section_id = ci.section_id
         JOIN semester csm ON csm.semester_id = ccs.semester_id
         WHERE ci.student_id = s.student_id
-          AND csm.is_current = 1
+          AND (
+            (#{semester} IS NULL AND csm.is_current = 1)
+            OR (#{semester} IS NOT NULL AND TO_CHAR(csm.year) || '-' ||
+              CASE csm.term
+                WHEN 'SPRING' THEN '1'
+                WHEN 'FALL' THEN '2'
+                ELSE csm.term
+              END || '학기' = #{semester})
+          )
       ) AS cart_count
     FROM student s
     WHERE s.user_id = #{userId}
@@ -138,7 +154,7 @@
     WHERE s.user_id = #{userId}
       AND cs.status != 'CANCELLED'
       AND ss.day_of_week = #{dayOfWeek}
-      AND <include refid="currentSemesterCondition" />
+      AND <include refid="semesterCondition" />
     ORDER BY ss.start_time, c.course_name
   </select>
 
@@ -150,7 +166,7 @@
         JOIN course_section cs ON cs.section_id = ci.section_id
         JOIN semester sm ON sm.semester_id = cs.semester_id
         WHERE ci.student_id = s.student_id
-          AND <include refid="currentSemesterCondition" />
+          AND <include refid="semesterCondition" />
       ) AS cart_count,
       (
         SELECT COUNT(*)
@@ -161,7 +177,7 @@
         WHERE e.student_id = s.student_id
           AND e.status = 'ENROLLED'
           AND r.review_id IS NULL
-          AND <include refid="currentSemesterCondition" />
+          AND <include refid="semesterCondition" />
       ) AS review_pending_count
     FROM student s
     WHERE s.user_id = #{userId}

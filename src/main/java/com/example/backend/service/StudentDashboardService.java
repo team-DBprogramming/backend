@@ -32,20 +32,21 @@ public class StudentDashboardService {
   }
 
   @Transactional(readOnly = true)
-  public StudentDashboardResponse getDashboard(AuthenticatedUser currentUser) {
+  public StudentDashboardResponse getDashboard(AuthenticatedUser currentUser, String semester) {
     Long studentUserId = currentUser.requireStudentUserId();
+    String normalizedSemester = normalize(semester);
     ZonedDateTime now = ZonedDateTime.now(clock.withZone(SEOUL_ZONE));
     String today = toSchemaDayOfWeek(now.getDayOfWeek());
 
-    StudentInfo studentInfo = dashboardMapper.findStudentInfo(studentUserId);
+    StudentInfo studentInfo = dashboardMapper.findStudentInfo(studentUserId, normalizedSemester);
     StudentEnrollmentStatus enrollmentStatus =
-        nullToClosedStatus(dashboardMapper.findEnrollmentStatus(studentUserId));
+        nullToClosedStatus(dashboardMapper.findEnrollmentStatus(studentUserId, normalizedSemester));
     StudentCreditSummary creditSummary =
-        nullToEmptyCreditSummary(dashboardMapper.findCreditSummary(studentUserId, MAX_CREDITS));
+        nullToEmptyCreditSummary(dashboardMapper.findCreditSummary(studentUserId, MAX_CREDITS, normalizedSemester));
     List<StudentTodaySchedule> todaySchedule =
-        markNextSchedule(dashboardMapper.findTodaySchedules(studentUserId, today), now.toLocalTime());
+        markNextSchedule(dashboardMapper.findTodaySchedules(studentUserId, today, normalizedSemester), now.toLocalTime());
     StudentQuickActions quickActions =
-        nullToEmptyQuickActions(dashboardMapper.findQuickActions(studentUserId));
+        nullToEmptyQuickActions(dashboardMapper.findQuickActions(studentUserId, normalizedSemester));
 
     return new StudentDashboardResponse(
         studentInfo, enrollmentStatus, creditSummary, todaySchedule, quickActions);
@@ -92,5 +93,9 @@ public class StudentDashboardService {
 
   private boolean isBlank(String value) {
     return value == null || value.trim().isEmpty();
+  }
+
+  private String normalize(String value) {
+    return isBlank(value) ? null : value.trim();
   }
 }
