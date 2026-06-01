@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.StudentTimetableMapper">
+  <resultMap id="TimetableResultMap" type="com.example.backend.dto.student.StudentTimetableItem">
+    <result property="courseId" column="course_id" />
+    <result property="courseName" column="course_name" />
+    <result property="professor" column="professor" />
+    <result property="division" column="division" />
+    <result property="dayOfWeek" column="day_of_week" />
+    <result property="startTime" column="start_time" />
+    <result property="endTime" column="end_time" />
+    <result property="room" column="room" />
+  </resultMap>
+
+  <sql id="timetableSelect">
+    SELECT
+      c.course_code AS course_id,
+      c.course_name,
+      p.name AS professor,
+      cs.section_no || '분반' AS division,
+      ss.day_of_week,
+      ss.start_time,
+      ss.end_time,
+      cr.building || ' ' || cr.room_no AS room
+    FROM student s
+  </sql>
+
+  <select id="findEnrollmentTimetable" resultMap="TimetableResultMap">
+    <include refid="timetableSelect" />
+    JOIN enrollment e ON e.student_id = s.student_id AND e.status = 'ENROLLED'
+    JOIN course_section cs ON cs.section_id = e.section_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN professor p ON p.professor_id = cs.professor_id
+    JOIN section_schedule ss ON ss.section_id = cs.section_id
+    JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+    WHERE s.user_id = #{userId}
+      AND sm.is_current = 1
+    ORDER BY ss.day_of_week, ss.start_time
+  </select>
+
+  <select id="findCartTimetable" resultMap="TimetableResultMap">
+    <include refid="timetableSelect" />
+    JOIN cart_item ci ON ci.student_id = s.student_id
+    JOIN course_section cs ON cs.section_id = ci.section_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN professor p ON p.professor_id = cs.professor_id
+    JOIN section_schedule ss ON ss.section_id = cs.section_id
+    JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+    WHERE s.user_id = #{userId}
+      AND sm.is_current = 1
+    ORDER BY ss.day_of_week, ss.start_time
+  </select>
+
+  <select id="findRecommendedTimetable" resultMap="TimetableResultMap">
+    SELECT *
+    FROM (
+      SELECT
+        c.course_code AS course_id,
+        c.course_name,
+        p.name AS professor,
+        cs.section_no || '분반' AS division,
+        ss.day_of_week,
+        ss.start_time,
+        ss.end_time,
+        cr.building || ' ' || cr.room_no AS room,
+        SUM(c.credits) OVER (ORDER BY c.course_name, cs.section_no) AS running_credits
+      FROM student s
+      JOIN course_section cs ON 1 = 1
+      JOIN semester sm ON sm.semester_id = cs.semester_id
+      JOIN course c ON c.course_id = cs.course_id
+      JOIN professor p ON p.professor_id = cs.professor_id
+      JOIN section_schedule ss ON ss.section_id = cs.section_id
+      JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+      WHERE s.user_id = #{userId}
+        AND sm.is_current = 1
+        AND cs.status = 'OPEN'
+        AND c.target_year = s.year_level
+        AND (#{keyword} IS NULL OR LOWER(c.course_name) LIKE '%' || LOWER(#{keyword}) || '%')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM enrollment e
+          WHERE e.student_id = s.student_id
+            AND e.section_id = cs.section_id
+            AND e.status = 'ENROLLED'
+        )
+    )
+    WHERE running_credits <![CDATA[<=]]> #{maxCredits}
+    ORDER BY day_of_week, start_time
+  </select>
+</mapper>
