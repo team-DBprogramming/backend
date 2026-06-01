@@ -46,7 +46,15 @@
     JOIN professor p ON p.professor_id = cs.professor_id
     LEFT JOIN review r ON r.enrollment_id = e.enrollment_id
     WHERE s.user_id = #{userId}
-      AND sm.is_current = 1
+      AND (
+        (#{semester} IS NULL AND sm.is_current = 1)
+        OR (#{semester} IS NOT NULL AND TO_CHAR(sm.year) || '-' ||
+          CASE sm.term
+            WHEN 'SPRING' THEN '1'
+            WHEN 'FALL' THEN '2'
+            ELSE sm.term
+          END || '학기' = #{semester})
+      )
     ORDER BY c.course_name, cs.section_no
   </select>
 
@@ -66,15 +74,20 @@
     )
     VALUES (
       #{enrollmentId},
-      #{request.ratingOverall},
-      #{request.ratingContent},
-      #{request.ratingWorkload},
-      #{request.ratingProfessor},
+      #{request.rating},
+      #{request.rating},
       #{request.difficulty},
-      #{request.pros},
-      #{request.cons},
-      #{request.advice},
-      CASE WHEN #{request.anonymous} = 0 THEN 0 ELSE 1 END,
+      #{request.rating},
+      CASE
+        WHEN #{request.difficulty} IS NULL THEN 'MEDIUM'
+        WHEN #{request.difficulty} <![CDATA[>=]]> 4 THEN 'HARD'
+        WHEN #{request.difficulty} <![CDATA[<=]]> 2 THEN 'EASY'
+        ELSE 'MEDIUM'
+      END,
+      #{request.comment},
+      NULL,
+      NULL,
+      1,
       SYSTIMESTAMP
     )
   </insert>
