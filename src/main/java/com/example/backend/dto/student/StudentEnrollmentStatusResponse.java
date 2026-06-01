@@ -1,3 +1,10 @@
 package com.example.backend.dto.student;
 
-public record StudentEnrollmentStatusResponse(String status, String deadline, Integer daysLeft) {}
+import java.util.List;
+
+public record StudentEnrollmentStatusResponse(
+    String periodStatus,
+    Integer appliedCount,
+    Integer appliedCredit,
+    Integer remainingSlots,
+    List<StudentEnrolledCourse> enrolledCourses) {}

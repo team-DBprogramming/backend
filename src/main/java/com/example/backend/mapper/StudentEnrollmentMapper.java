@@ -1,6 +1,7 @@
 package com.example.backend.mapper;
 
 import com.example.backend.dto.student.StudentCreditSummary;
+import com.example.backend.dto.student.StudentEnrolledCourse;
 import com.example.backend.dto.student.StudentEnrollmentStatus;
 import com.example.backend.dto.student.StudentTimetableItem;
 import java.util.List;
@@ -26,6 +27,8 @@ public interface StudentEnrollmentMapper {
 
   StudentCreditSummary findCreditSummary(
       @Param("userId") Long userId, @Param("maxCredits") Integer maxCredits);
+
+  List<StudentEnrolledCourse> findEnrolledCourses(@Param("userId") Long userId);
 
   List<StudentTimetableItem> findEnrollmentTimetable(@Param("userId") Long userId);
 }
