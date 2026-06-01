@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.StudentCartMapper">
+  <resultMap id="CartItemResultMap" type="com.example.backend.dto.student.StudentCartItem">
+    <result property="cartItemId" column="cart_item_id" />
+    <result property="courseId" column="course_id" />
+    <result property="courseName" column="course_name" />
+    <result property="professor" column="professor" />
+    <result property="division" column="division" />
+    <result property="credit" column="credit" />
+    <result property="schedule" column="schedule" />
+    <result property="room" column="room" />
+  </resultMap>
+
+  <select id="findStudentId" resultType="long">
+    SELECT student_id FROM student WHERE user_id = #{userId}
+  </select>
+
+  <select id="findSectionId" resultType="long">
+    SELECT cs.section_id
+    FROM course_section cs
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    WHERE c.course_code = #{courseId}
+      AND sm.is_current = 1
+      AND cs.status != 'CANCELLED'
+      AND (#{division} IS NULL OR cs.section_no = #{division})
+    ORDER BY cs.section_no
+    FETCH FIRST 1 ROW ONLY
+  </select>
+
+  <select id="findCartItems" resultMap="CartItemResultMap">
+    SELECT
+      ci.cart_id AS cart_item_id,
+      c.course_code AS course_id,
+      c.course_name,
+      p.name AS professor,
+      cs.section_no || '분반' AS division,
+      c.credits AS credit,
+      (
+        SELECT LISTAGG(ss.day_of_week || ' ' || ss.start_time || '-' || ss.end_time, ', ')
+          WITHIN GROUP (ORDER BY ss.day_of_week, ss.start_time)
+        FROM section_schedule ss
+        WHERE ss.section_id = cs.section_id
+      ) AS schedule,
+      (
+        SELECT LISTAGG(room_name, ', ') WITHIN GROUP (ORDER BY room_name)
+        FROM (
+          SELECT DISTINCT cr.building || ' ' || cr.room_no AS room_name
+          FROM section_schedule ss
+          JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+          WHERE ss.section_id = cs.section_id
+        )
+      ) AS room
+    FROM cart_item ci
+    JOIN course_section cs ON cs.section_id = ci.section_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN professor p ON p.professor_id = cs.professor_id
+    WHERE ci.student_id = #{studentId}
+      AND sm.is_current = 1
+    ORDER BY ci.added_at DESC
+  </select>
+
+  <insert id="insertCart">
+    INSERT INTO cart_item (student_id, section_id, added_at)
+    VALUES (#{studentId}, #{sectionId}, SYSTIMESTAMP)
+  </insert>
+
+  <delete id="deleteCart">
+    DELETE FROM cart_item
+    WHERE cart_id = #{cartItemId}
+      AND student_id = #{studentId}
+  </delete>
+
+  <select id="countCart" resultType="int">
+    SELECT COUNT(*)
+    FROM cart_item
+    WHERE student_id = #{studentId}
+  </select>
+
+  <insert id="insertEnrollmentsFromCart">
+    INSERT INTO enrollment (student_id, section_id, status, enrolled_at)
+    SELECT ci.student_id, ci.section_id, 'ENROLLED', SYSTIMESTAMP
+    FROM cart_item ci
+    JOIN course_section cs ON cs.section_id = ci.section_id
+    WHERE ci.student_id = #{studentId}
+      AND cs.enrolled_count <![CDATA[<]]> cs.capacity
+      AND NOT EXISTS (
+        SELECT 1
+        FROM enrollment e
+        WHERE e.student_id = ci.student_id
+          AND e.section_id = ci.section_id
+          AND e.status = 'ENROLLED'
+      )
+  </insert>
+
+  <update id="updateEnrolledCountsFromCart">
+    UPDATE course_section cs
+    SET enrolled_count = (
+      SELECT COUNT(*)
+      FROM enrollment e
+      WHERE e.section_id = cs.section_id
+        AND e.status = 'ENROLLED'
+    )
+    WHERE cs.section_id IN (
+      SELECT section_id
+      FROM cart_item
+      WHERE student_id = #{studentId}
+    )
+  </update>
+</mapper>
