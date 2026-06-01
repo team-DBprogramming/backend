@@ -1,5 +1,7 @@
 package com.example.backend.dto.student;
 
+import java.util.List;
+
 public class StudentCourseSummary {
 
   private String courseId;
@@ -10,6 +12,7 @@ public class StudentCourseSummary {
   private String courseType;
   private Integer credit;
   private String schedule;
+  private List<StudentLectureTime> lectureTimes;
   private String room;
   private Integer capacity;
   private Integer enrolled;
@@ -84,6 +87,14 @@ public class StudentCourseSummary {
 
   public void setSchedule(String schedule) {
     this.schedule = schedule;
+  }
+
+  public List<StudentLectureTime> getLectureTimes() {
+    return lectureTimes;
+  }
+
+  public void setLectureTimes(List<StudentLectureTime> lectureTimes) {
+    this.lectureTimes = lectureTimes;
   }
 
   public String getRoom() {

@@ -50,7 +50,7 @@ public class StudentCourseService {
             credit,
             normalize(startTime),
             normalize(endTime));
-    return new StudentCourseListResponse(
+    List<StudentCourseSummary> courses =
         courseMapper.findCourses(
             normalize(semester),
             normalize(keyword),
@@ -63,7 +63,11 @@ public class StudentCourseService {
             normalize(endTime),
             normalize(sort),
             offset,
-            normalizedSize),
+            normalizedSize);
+    courses.forEach(course -> course.setLectureTimes(toLectureTimes(
+        courseMapper.findSchedules(course.getCourseId(), normalizeDivision(course.getDivision())))));
+    return new StudentCourseListResponse(
+        courses,
         new StudentCourseListResponse.Pagination(normalizedPage, normalizedSize, total == null ? 0 : total));
   }
 
@@ -133,6 +137,12 @@ public class StudentCourseService {
 
   private String valueOrDefault(String value, String defaultValue) {
     return isBlank(value) ? defaultValue : value.trim();
+  }
+
+  private List<StudentLectureTime> toLectureTimes(List<StudentCourseSchedule> schedules) {
+    return schedules.stream()
+        .map(schedule -> new StudentLectureTime(schedule.getDayOfWeek(), schedule.getStartTime(), schedule.getEndTime()))
+        .toList();
   }
 
   private boolean isBlank(String value) {

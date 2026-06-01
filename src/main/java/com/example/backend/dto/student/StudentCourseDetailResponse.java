@@ -1,5 +1,6 @@
 package com.example.backend.dto.student;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record StudentCourseDetailResponse(
@@ -32,7 +33,11 @@ public record StudentCourseDetailResponse(
       String prerequisite,
       String note) {}
 
-  public record GradingCriteria(Integer midterm, Integer finalExam, Integer assignment, Integer attendance) {}
+  public record GradingCriteria(
+      Integer midterm,
+      @JsonProperty("final") Integer finalExam,
+      Integer assignment,
+      Integer attendance) {}
 
   public record EnrollmentEligibility(
       boolean enrollable,
