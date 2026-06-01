@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.NotificationReplyMapper">
+  <select id="findSenderUserId" resultType="long">
+    SELECT sender_user_id
+    FROM notification
+    WHERE notification_id = #{notificationId}
+      AND recipient_user_id = #{recipientUserId}
+      AND sender_user_id IS NOT NULL
+  </select>
+
+  <insert id="insertReply">
+    INSERT INTO notification (
+      recipient_user_id,
+      sender_user_id,
+      target_section_id,
+      target_request_id,
+      title,
+      body,
+      type,
+      is_read,
+      created_at
+    )
+    SELECT
+      #{recipientUserId},
+      #{senderUserId},
+      n.target_section_id,
+      n.target_request_id,
+      '알림 답장',
+      #{message},
+      'PROFESSOR_MESSAGE',
+      0,
+      SYSTIMESTAMP
+    FROM notification n
+    WHERE n.notification_id = #{notificationId}
+  </insert>
+
+  <select id="findLatestReplyId" resultType="long">
+    SELECT notification_id
+    FROM notification
+    WHERE recipient_user_id = #{recipientUserId}
+      AND sender_user_id = #{senderUserId}
+    ORDER BY created_at DESC
+    FETCH FIRST 1 ROW ONLY
+  </select>
+</mapper>
