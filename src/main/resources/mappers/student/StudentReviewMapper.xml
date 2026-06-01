@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.backend.mapper.StudentReviewMapper">
+  <resultMap id="ReviewItemResultMap" type="com.example.backend.dto.student.StudentReviewItem">
+    <result property="courseId" column="course_id" />
+    <result property="courseName" column="course_name" />
+    <result property="professor" column="professor" />
+    <result property="status" column="status" />
+    <result property="ratingOverall" column="rating_overall" />
+    <result property="createdAt" column="created_at" />
+  </resultMap>
+
+  <select id="findStudentId" resultType="long">
+    SELECT student_id FROM student WHERE user_id = #{userId}
+  </select>
+
+  <select id="findEnrollmentId" resultType="long">
+    SELECT e.enrollment_id
+    FROM enrollment e
+    JOIN course_section cs ON cs.section_id = e.section_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    JOIN course c ON c.course_id = cs.course_id
+    WHERE e.student_id = #{studentId}
+      AND e.status = 'ENROLLED'
+      AND sm.is_current = 1
+      AND c.course_code = #{courseId}
+    FETCH FIRST 1 ROW ONLY
+  </select>
+
+  <select id="findReviews" resultMap="ReviewItemResultMap">
+    SELECT
+      c.course_code AS course_id,
+      c.course_name,
+      p.name AS professor,
+      CASE WHEN r.review_id IS NULL THEN 'PENDING' ELSE 'SUBMITTED' END AS status,
+      r.rating_overall,
+      TO_CHAR(r.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
+    FROM student s
+    JOIN enrollment e ON e.student_id = s.student_id AND e.status = 'ENROLLED'
+    JOIN course_section cs ON cs.section_id = e.section_id
+    JOIN semester sm ON sm.semester_id = cs.semester_id
+    JOIN course c ON c.course_id = cs.course_id
+    JOIN professor p ON p.professor_id = cs.professor_id
+    LEFT JOIN review r ON r.enrollment_id = e.enrollment_id
+    WHERE s.user_id = #{userId}
+      AND sm.is_current = 1
+    ORDER BY c.course_name, cs.section_no
+  </select>
+
+  <insert id="insertReview">
+    INSERT INTO review (
+      enrollment_id,
+      rating_overall,
+      rating_content,
+      rating_workload,
+      rating_professor,
+      difficulty,
+      pros,
+      cons,
+      advice,
+      is_anonymous,
+      created_at
+    )
+    VALUES (
+      #{enrollmentId},
+      #{request.ratingOverall},
+      #{request.ratingContent},
+      #{request.ratingWorkload},
+      #{request.ratingProfessor},
+      #{request.difficulty},
+      #{request.pros},
+      #{request.cons},
+      #{request.advice},
+      CASE WHEN #{request.anonymous} = 0 THEN 0 ELSE 1 END,
+      SYSTIMESTAMP
+    )
+  </insert>
+
+  <select id="findLatestReviewId" resultType="long">
+    SELECT review_id
+    FROM review
+    WHERE enrollment_id = #{enrollmentId}
+    ORDER BY created_at DESC
+    FETCH FIRST 1 ROW ONLY
+  </select>
+</mapper>
