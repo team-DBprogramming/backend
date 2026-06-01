@@ -11,7 +11,6 @@ public class StudentCourseSummary {
   private String division;
   private String courseType;
   private Integer credit;
-  private String schedule;
   private List<StudentLectureTime> lectureTimes;
   private String room;
   private Integer capacity;
@@ -79,14 +78,6 @@ public class StudentCourseSummary {
 
   public void setCredit(Integer credit) {
     this.credit = credit;
-  }
-
-  public String getSchedule() {
-    return schedule;
-  }
-
-  public void setSchedule(String schedule) {
-    this.schedule = schedule;
   }
 
   public List<StudentLectureTime> getLectureTimes() {

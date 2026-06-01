@@ -18,4 +18,6 @@ public interface StudentReviewMapper {
   void insertReview(@Param("enrollmentId") Long enrollmentId, @Param("request") StudentReviewRequest request);
 
   Long findLatestReviewId(@Param("enrollmentId") Long enrollmentId);
+
+  String findLatestReviewSubmittedAt(@Param("enrollmentId") Long enrollmentId);
 }

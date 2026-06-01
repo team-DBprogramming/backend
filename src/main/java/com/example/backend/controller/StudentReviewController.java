@@ -1,9 +1,9 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.student.StudentApiResponse;
-import com.example.backend.dto.student.StudentMutationResponse;
 import com.example.backend.dto.student.StudentReviewListResponse;
 import com.example.backend.dto.student.StudentReviewRequest;
+import com.example.backend.dto.student.StudentReviewSubmitResponse;
 import com.example.backend.security.CustomUserDetails;
 import com.example.backend.service.StudentReviewService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,7 +44,7 @@ public class StudentReviewController {
   @PostMapping("/courses/{courseId}/reviews")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "강의평가 제출", description = "현재 학기 수강 강의에 강의평가를 제출합니다.")
-  public StudentApiResponse<StudentMutationResponse> submitReview(
+  public StudentApiResponse<StudentReviewSubmitResponse> submitReview(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
       @PathVariable String courseId,
       @RequestBody StudentReviewRequest request) {
