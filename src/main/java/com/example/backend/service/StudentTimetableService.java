@@ -19,9 +19,9 @@ public class StudentTimetableService {
   }
 
   @Transactional(readOnly = true)
-  public StudentTimetableResponse getTimetable(AuthenticatedUser currentUser) {
+  public StudentTimetableResponse getTimetable(AuthenticatedUser currentUser, String semester) {
     Long userId = currentUser.requireStudentUserId();
-    return new StudentTimetableResponse(timetableMapper.findEnrollmentTimetable(userId));
+    return new StudentTimetableResponse(timetableMapper.findEnrollmentTimetable(userId, normalize(semester)));
   }
 
   @Transactional(readOnly = true)

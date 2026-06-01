@@ -8,7 +8,8 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface StudentTimetableMapper {
 
-  List<StudentTimetableItem> findEnrollmentTimetable(@Param("userId") Long userId);
+  List<StudentTimetableItem> findEnrollmentTimetable(
+      @Param("userId") Long userId, @Param("semester") String semester);
 
   List<StudentTimetableItem> findCartTimetable(@Param("userId") Long userId);
 

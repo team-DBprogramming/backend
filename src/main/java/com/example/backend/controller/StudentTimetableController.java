@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -27,11 +28,14 @@ public class StudentTimetableController {
   }
 
   @GetMapping("/students/me/timetable")
-  @Operation(summary = "내 시간표 조회", description = "현재 로그인한 학생의 현재 학기 시간표를 조회합니다.")
+  @Operation(summary = "내 시간표 조회", description = "현재 로그인한 학생의 학기별 시간표를 조회합니다.")
   public StudentApiResponse<StudentTimetableResponse> getTimetable(
-      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails) {
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+      @Parameter(description = "조회 학기", example = "2026-1")
+          @RequestParam(value = "semester", required = false)
+          String semester) {
     return StudentApiResponse.success(
-        "S200", "내 시간표 조회 성공", timetableService.getTimetable(userDetails.toAuthenticatedUser()));
+        "S200", "내 시간표 조회 성공", timetableService.getTimetable(userDetails.toAuthenticatedUser(), semester));
   }
 
   @PostMapping("/students/me/timetable/export-cart")

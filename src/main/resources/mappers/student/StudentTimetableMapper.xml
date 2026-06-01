@@ -28,6 +28,22 @@
     FROM student s
   </sql>
 
+  <sql id="semesterCondition">
+    (
+      (#{semester} IS NULL AND sm.is_current = 1)
+      OR
+      (
+        #{semester} IS NOT NULL
+        AND TO_CHAR(sm.year) || '-' ||
+          CASE sm.term
+            WHEN 'SPRING' THEN '1'
+            WHEN 'FALL' THEN '2'
+            ELSE sm.term
+          END = #{semester}
+      )
+    )
+  </sql>
+
   <select id="findEnrollmentTimetable" resultMap="TimetableResultMap">
     <include refid="timetableSelect" />
     JOIN enrollment e ON e.student_id = s.student_id AND e.status = 'ENROLLED'
@@ -38,7 +54,7 @@
     JOIN section_schedule ss ON ss.section_id = cs.section_id
     JOIN classroom cr ON cr.classroom_id = ss.classroom_id
     WHERE s.user_id = #{userId}
-      AND sm.is_current = 1
+      AND <include refid="semesterCondition" />
     ORDER BY ss.day_of_week, ss.start_time
   </select>
 
