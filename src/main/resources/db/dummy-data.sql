@@ -3,6 +3,7 @@
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE;
 
+ALTER SESSION SET CONTAINER = XEPDB1;
 ALTER SESSION SET CURRENT_SCHEMA = backend;
 
 INSERT INTO department (dept_id, dept_code, dept_name, college) VALUES (1, 'CSE', 'Computer Science and Engineering', 'College of Software');
