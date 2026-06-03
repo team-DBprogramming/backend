@@ -80,7 +80,31 @@ jobs:
             --command "
               set -e
               cd '$DEPLOY_PATH'
+              set -a
+              . ./.env
+              set +a
+
               gcloud auth print-access-token | sudo docker login -u oauth2accesstoken --password-stdin 'https://$REGION-docker.pkg.dev'
+
+              sudo env SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose down -v
+              sudo env SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose pull oracle
+              sudo env SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose up -d oracle
+
+              ORACLE_ID=\$(sudo docker compose ps -q oracle)
+              for i in \$(seq 1 60); do
+                STATUS=\$(sudo docker inspect -f '{{.State.Health.Status}}' \"\$ORACLE_ID\" 2>/dev/null || true)
+                if [ \"\$STATUS\" = 'healthy' ]; then
+                  break
+                fi
+                if [ \"\$i\" -eq 60 ]; then
+                  sudo docker compose logs oracle
+                  exit 1
+                fi
+                sleep 5
+              done
+
+              printf 'WHENEVER SQLERROR EXIT SQL.SQLCODE\nDECLARE\n  v_count NUMBER;\nBEGIN\n  SELECT COUNT(*) INTO v_count FROM user_account;\n  IF v_count = 0 THEN\n    RAISE_APPLICATION_ERROR(-20000, TO_CHAR(v_count));\n  END IF;\nEND;\n/\nEXIT\n' | sudo docker exec -i \"\$ORACLE_ID\" sqlplus -s \"\$DB_USERNAME/\$DB_PASSWORD@localhost:1521/XEPDB1\"
+
               sudo env SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose pull spring
               sudo env SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose up -d --no-build spring
               sudo docker image prune -f

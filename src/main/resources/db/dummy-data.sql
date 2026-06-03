@@ -1,6 +1,8 @@
 -- Dummy seed data for src/main/resources/db/schema.sql.
 -- Run this after schema.sql has been executed.
 
+WHENEVER SQLERROR EXIT SQL.SQLCODE;
+
 ALTER SESSION SET CURRENT_SCHEMA = backend;
 
 INSERT INTO department (dept_id, dept_code, dept_name, college) VALUES (1, 'CSE', 'Computer Science and Engineering', 'College of Software');

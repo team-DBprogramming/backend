@@ -1,3 +1,5 @@
+WHENEVER SQLERROR EXIT SQL.SQLCODE;
+
 -- Oracle schema target follows .env.example: DB_USERNAME=backend.
 ALTER SESSION SET CONTAINER = XEPDB1;
 ALTER SESSION SET CURRENT_SCHEMA = backend;
