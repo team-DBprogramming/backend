@@ -103,7 +103,18 @@ jobs:
                 sleep 5
               done
 
-              printf 'WHENEVER SQLERROR EXIT SQL.SQLCODE\nDECLARE\n  v_count NUMBER;\nBEGIN\n  SELECT COUNT(*) INTO v_count FROM user_account;\n  IF v_count = 0 THEN\n    RAISE_APPLICATION_ERROR(-20000, TO_CHAR(v_count));\n  END IF;\nEND;\n/\nEXIT\n' | sudo docker exec -i \"\$ORACLE_ID\" sqlplus -s \"\$DB_USERNAME/\$DB_PASSWORD@localhost:1521/XEPDB1\"
+              for i in \$(seq 1 120); do
+                USER_COUNT=\$(printf 'WHENEVER SQLERROR EXIT SQL.SQLCODE\nSET HEADING OFF FEEDBACK OFF PAGESIZE 0 VERIFY OFF ECHO OFF\nSELECT CHR(83) || CHR(69) || CHR(69) || CHR(68) || CHR(95) || CHR(67) || CHR(79) || CHR(85) || CHR(78) || CHR(84) || CHR(61) || TO_CHAR(COUNT(*)) FROM user_account;\nEXIT\n' | sudo docker exec -i \"\$ORACLE_ID\" sqlplus -s \"\$DB_USERNAME/\$DB_PASSWORD@localhost:1521/XEPDB1\" 2>/tmp/oracle-seed-check.err | grep 'SEED_COUNT=' | cut -d= -f2 | tr -dc '0-9')
+                if [ -n \"\$USER_COUNT\" ] && [ \"\$USER_COUNT\" -gt 0 ]; then
+                  break
+                fi
+                if [ \"\$i\" -eq 120 ]; then
+                  cat /tmp/oracle-seed-check.err || true
+                  sudo docker compose logs oracle
+                  exit 1
+                fi
+                sleep 5
+              done
 
               sudo env SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose pull spring
               sudo env SPRING_IMAGE='$IMAGE:${{ github.sha }}' docker compose up -d --no-build spring
