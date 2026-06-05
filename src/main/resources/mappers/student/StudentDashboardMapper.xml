@@ -63,9 +63,8 @@
         END || '학기' AS current_semester
     FROM student s
     JOIN department d ON d.dept_id = s.dept_id
-    CROSS JOIN semester sm
+    LEFT JOIN semester sm ON <include refid="semesterCondition" />
     WHERE s.user_id = #{userId}
-      AND <include refid="semesterCondition" />
   </select>
 
   <select id="findEnrollmentStatus" resultMap="EnrollmentStatusResultMap">
