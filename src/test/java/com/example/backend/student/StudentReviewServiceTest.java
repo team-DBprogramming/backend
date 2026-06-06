@@ -2,7 +2,10 @@ package com.example.backend.student;
 
 import static com.example.backend.support.TestAuthentications.studentUser;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.example.backend.apiPayload.code.status.ErrorStatus;
+import com.example.backend.apiPayload.exception.handler.StudentHandler;
 import com.example.backend.dto.student.StudentReviewItem;
 import com.example.backend.dto.student.StudentReviewListResponse;
 import com.example.backend.dto.student.StudentReviewRequest;
@@ -46,6 +49,32 @@ class StudentReviewServiceTest {
     assertThat(reviewMapper.requestedSemester).isEqualTo("2026-1");
   }
 
+  @Test
+  void submitReviewThrowsWhenStudentDoesNotExist() {
+    reviewMapper.studentId = null;
+
+    assertThatThrownBy(() -> reviewService.submitReview(studentUser(), "CSE3033", reviewRequest()))
+        .isInstanceOf(StudentHandler.class)
+        .hasMessage(ErrorStatus.STUDENT_NOT_FOUND.getMessage());
+
+    assertThat(reviewMapper.insertedEnrollmentId).isNull();
+  }
+
+  @Test
+  void submitReviewThrowsWhenEnrollmentDoesNotExist() {
+    reviewMapper.enrollmentId = null;
+
+    assertThatThrownBy(() -> reviewService.submitReview(studentUser(), "CSE3033", reviewRequest()))
+        .isInstanceOf(StudentHandler.class)
+        .hasMessage(ErrorStatus.STUDENT_ENROLLMENT_NOT_FOUND.getMessage());
+
+    assertThat(reviewMapper.insertedEnrollmentId).isNull();
+  }
+
+  private StudentReviewRequest reviewRequest() {
+    return new StudentReviewRequest(5, 3, "좋은 강의였습니다.");
+  }
+
   private StudentReviewItem reviewItem(
       String courseId, String courseName, String professor, String semester, Integer credit, String status) {
     StudentReviewItem item = new StudentReviewItem();
@@ -62,15 +91,18 @@ class StudentReviewServiceTest {
     private final List<StudentReviewItem> reviews = new ArrayList<>();
     private Long requestedUserId;
     private String requestedSemester;
+    private Long studentId = 1L;
+    private Long enrollmentId = 1L;
+    private Long insertedEnrollmentId;
 
     @Override
     public Long findStudentId(Long userId) {
-      return userId;
+      return studentId;
     }
 
     @Override
     public Long findEnrollmentId(Long studentId, String courseId) {
-      return 1L;
+      return enrollmentId;
     }
 
     @Override
@@ -81,7 +113,9 @@ class StudentReviewServiceTest {
     }
 
     @Override
-    public void insertReview(Long enrollmentId, StudentReviewRequest request) {}
+    public void insertReview(Long enrollmentId, StudentReviewRequest request) {
+      insertedEnrollmentId = enrollmentId;
+    }
 
     @Override
     public Long findLatestReviewId(Long enrollmentId) {

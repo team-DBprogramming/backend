@@ -55,51 +55,64 @@
     JOIN professor p ON p.professor_id = cs.professor_id
     LEFT JOIN review r ON r.enrollment_id = e.enrollment_id
     WHERE s.user_id = #{userId}
-      AND (
-        (#{semester} IS NULL AND sm.is_current = 1)
-        OR (#{semester} IS NOT NULL AND TO_CHAR(sm.year) || '-' ||
-          CASE sm.term
-            WHEN 'SPRING' THEN '1'
-            WHEN 'FALL' THEN '2'
-            ELSE sm.term
-          END || '학기' = #{semester})
-      )
-    ORDER BY c.course_name, cs.section_no
-  </select>
+      <choose>
+    <when test="semester == null">
+      AND sm.is_current = 1
+    </when>
+    <otherwise>
+      AND TO_CHAR(sm.year) || '-' ||
+        CASE sm.term
+          WHEN 'SPRING' THEN '1'
+          WHEN 'FALL' THEN '2'
+          ELSE sm.term
+        END || '학기' = #{semester}
+    </otherwise>
+  </choose>
+  ORDER BY c.course_name, cs.section_no
+</select>
 
-  <insert id="insertReview">
-    INSERT INTO review (
-      enrollment_id,
-      rating_overall,
-      rating_content,
-      rating_workload,
-      rating_professor,
-      difficulty,
-      pros,
-      cons,
-      advice,
-      is_anonymous,
-      created_at
-    )
-    VALUES (
-      #{enrollmentId},
-      #{request.rating},
-      #{request.rating},
-      #{request.difficulty},
-      #{request.rating},
-      CASE
-        WHEN #{request.difficulty} IS NULL THEN 'MEDIUM'
-        WHEN #{request.difficulty} <![CDATA[>=]]> 4 THEN 'HARD'
-        WHEN #{request.difficulty} <![CDATA[<=]]> 2 THEN 'EASY'
-        ELSE 'MEDIUM'
-      END,
-      #{request.comment},
-      NULL,
-      NULL,
-      1,
-      SYSTIMESTAMP
-    )
-  </insert>
+
+<insert id="insertReview">
+  INSERT INTO review (
+    enrollment_id,
+    rating_overall,
+    rating_content,
+    rating_workload,
+    rating_professor,
+    difficulty,
+    pros,
+    cons,
+    advice,
+    is_anonymous,
+    created_at
+  )
+  VALUES (
+    #{enrollmentId},
+    #{request.rating},
+    #{request.rating},
+    #{request.rating},
+    #{request.rating},
+    <choose>
+      <when test="request.difficulty == null">
+        'MEDIUM'
+      </when>
+      <when test="request.difficulty >= 4">
+        'HARD'
+      </when>
+      <when test="request.difficulty &lt;= 2">
+        'EASY'
+      </when>
+      <otherwise>
+        'MEDIUM'
+      </otherwise>
+    </choose>,
+    #{request.comment},
+    NULL,
+    NULL,
+    1,
+    SYSTIMESTAMP
+  )
+</insert>
 
   <select id="findLatestReviewId" resultType="long">
     SELECT review_id
