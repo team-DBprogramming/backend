@@ -121,7 +121,7 @@ VALUES (2, 2, 'MAIN', 4, TO_TIMESTAMP('2026-02-09 09:00:00', 'YYYY-MM-DD HH24:MI
 INSERT INTO registration_period (period_id, semester_id, period_type, target_year, start_at, end_at)
 VALUES (3, 2, 'MAIN', 3, TO_TIMESTAMP('2026-02-10 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-02-10 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 INSERT INTO registration_period (period_id, semester_id, period_type, target_year, start_at, end_at)
-VALUES (4, 2, 'ADD_DROP', NULL, TO_TIMESTAMP('2026-03-02 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-03-06 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
+VALUES (4, 2, 'ADD_DROP', NULL, TO_TIMESTAMP('2026-06-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-06-30 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 INSERT INTO registration_period (period_id, semester_id, period_type, target_year, start_at, end_at)
 VALUES (5, 3, 'CART', NULL, TO_TIMESTAMP('2026-08-03 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-08-07 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 
