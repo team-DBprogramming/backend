@@ -1,5 +1,7 @@
 package com.example.backend.service;
 
+import com.example.backend.apiPayload.code.status.ErrorStatus;
+import com.example.backend.apiPayload.exception.handler.StudentHandler;
 import com.example.backend.dto.student.StudentReviewListResponse;
 import com.example.backend.dto.student.StudentReviewRequest;
 import com.example.backend.dto.student.StudentReviewSubmitResponse;
@@ -23,8 +25,15 @@ public class StudentReviewService {
     Long userId = currentUser.requireStudentUserId();
     List<StudentReviewListResponse.Course> courses =
         reviewMapper.findReviews(userId, normalize(semester)).stream()
-            .map(review -> new StudentReviewListResponse.Course(
-                review.getCourseId(), review.getCourseName(), "SUBMITTED".equals(review.getStatus())))
+            .map(
+                review ->
+                    new StudentReviewListResponse.Course(
+                        review.getCourseId(),
+                        review.getCourseName(),
+                        review.getProfessor(),
+                        review.getSemester(),
+                        review.getCredit(),
+                        "SUBMITTED".equals(review.getStatus())))
             .toList();
     long completed = courses.stream().filter(StudentReviewListResponse.Course::isCompleted).count();
     return new StudentReviewListResponse(
@@ -34,8 +43,17 @@ public class StudentReviewService {
   @Transactional
   public StudentReviewSubmitResponse submitReview(
       AuthenticatedUser currentUser, String courseId, StudentReviewRequest request) {
-    Long studentId = reviewMapper.findStudentId(currentUser.requireStudentUserId());
+    Long userId = currentUser.requireStudentUserId();
+    Long studentId = reviewMapper.findStudentId(userId);
+    if (studentId == null) {
+      throw new StudentHandler(ErrorStatus.STUDENT_NOT_FOUND);
+    }
+
     Long enrollmentId = reviewMapper.findEnrollmentId(studentId, courseId);
+    if (enrollmentId == null) {
+      throw new StudentHandler(ErrorStatus.STUDENT_ENROLLMENT_NOT_FOUND);
+    }
+
     reviewMapper.insertReview(enrollmentId, request);
     Long reviewId = reviewMapper.findLatestReviewId(enrollmentId);
     String submittedAt = reviewMapper.findLatestReviewSubmittedAt(enrollmentId);

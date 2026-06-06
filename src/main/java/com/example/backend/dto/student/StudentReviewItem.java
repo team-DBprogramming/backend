@@ -5,6 +5,8 @@ public class StudentReviewItem {
   private String courseId;
   private String courseName;
   private String professor;
+  private String semester;
+  private Integer credit;
   private String status;
   private Integer ratingOverall;
   private String createdAt;
@@ -33,6 +35,22 @@ public class StudentReviewItem {
 
   public void setProfessor(String professor) {
     this.professor = professor;
+  }
+
+  public String getSemester() {
+    return semester;
+  }
+
+  public void setSemester(String semester) {
+    this.semester = semester;
+  }
+
+  public Integer getCredit() {
+    return credit;
+  }
+
+  public void setCredit(Integer credit) {
+    this.credit = credit;
   }
 
   public String getStatus() {

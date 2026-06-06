@@ -34,7 +34,7 @@ public class StudentReviewController {
   @Operation(summary = "내 강의평가 목록", description = "현재 로그인한 학생의 강의평가 제출/미제출 목록을 조회합니다.")
   public StudentApiResponse<StudentReviewListResponse> getReviews(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
-      @Parameter(description = "조회 학기", example = "2026-1")
+      @Parameter(description = "조회 학기", example = "2026-1학기")
           @RequestParam(value = "semester", required = false)
           String semester) {
     return StudentApiResponse.success(

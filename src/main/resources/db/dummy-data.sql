@@ -24,6 +24,8 @@ VALUES (5, '20210001', 'dummy-password-hash', 'STUDENT', 'yuna.jung@example.edu'
 INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
 VALUES (6, 'P1001', 'dummy-password-hash', 'PROFESSOR', 'jihoon.han@example.edu', '02-2222-1001', 1, TO_TIMESTAMP('2026-05-30 08:40:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2020-02-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
+VALUES (10, '2024123456', 'dummy-password-hash', 'STUDENT', 'gildong.hong@example.edu', '010-1111-1234', 1, TO_TIMESTAMP('2026-06-01 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2024-03-04 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
+INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
 VALUES (7, 'P1002', 'dummy-password-hash', 'PROFESSOR', 'sora.kang@example.edu', '02-2222-1002', 1, TO_TIMESTAMP('2026-05-29 10:30:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2020-02-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
 VALUES (8, 'P1003', 'dummy-password-hash', 'PROFESSOR', 'taemin.oh@example.edu', '02-2222-1003', 1, NULL, TO_TIMESTAMP('2020-02-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
@@ -42,6 +44,8 @@ INSERT INTO student (student_id, user_id, dept_id, name, year_level, enrollment_
 VALUES (5, 5, 3, '정유나', 6, 'ENROLLED', 3.95, 124, 2021);
 
 INSERT INTO professor (professor_id, user_id, dept_id, name, title, office) VALUES (1, 6, 1, '한지훈', '교수', '소프트웨어관 501호');
+INSERT INTO student (student_id, user_id, dept_id, name, year_level, enrollment_status, cum_gpa, total_credits, admission_year)
+VALUES (6, 10, 1, '홍길동', 3, 'ENROLLED', 3.68, 54, 2024);
 INSERT INTO professor (professor_id, user_id, dept_id, name, title, office) VALUES (2, 7, 1, '강소라', '부교수', '소프트웨어관 407호');
 INSERT INTO professor (professor_id, user_id, dept_id, name, title, office) VALUES (3, 8, 2, '오태민', '조교수', '경영관 302호');
 INSERT INTO professor (professor_id, user_id, dept_id, name, title, office) VALUES (4, 9, 3, '신은하', '강사', '과학관 215호');
@@ -82,9 +86,9 @@ INSERT INTO classroom (classroom_id, building, room_no, capacity, has_projector)
 INSERT INTO classroom (classroom_id, building, room_no, capacity, has_projector) VALUES (5, '과학관', '110', 50, 0);
 
 INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (1, 3, 2, 1, '01', 35, 2, 'OPEN', 'https://example.edu/syllabus/CSE3033-2026S-01');
+VALUES (1, 3, 2, 1, '01', 35, 3, 'OPEN', 'https://example.edu/syllabus/CSE3033-2026S-01');
 INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (2, 4, 2, 1, '01', 30, 1, 'OPEN', 'https://example.edu/syllabus/CSE4050-2026S-01');
+VALUES (2, 4, 2, 1, '01', 30, 2, 'OPEN', 'https://example.edu/syllabus/CSE4050-2026S-01');
 INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
 VALUES (3, 5, 2, 2, '01', 40, 2, 'OPEN', 'https://example.edu/syllabus/CSE4077-2026S-01');
 INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
@@ -167,6 +171,10 @@ INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_
 VALUES (10, 4, 8, 'COMPLETED', TO_TIMESTAMP('2025-08-18 09:30:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, '휴학 전 이수 완료.');
 INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
 VALUES (11, 3, 1, 'DROPPED', TO_TIMESTAMP('2026-02-09 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-03-04 17:00:00', 'YYYY-MM-DD HH24:MI:SS'), '수강 정정 기간에 취소.');
+INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
+VALUES (12, 6, 1, 'ENROLLED', TO_TIMESTAMP('2026-03-04 09:20:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
+INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
+VALUES (13, 6, 2, 'ENROLLED', TO_TIMESTAMP('2026-03-04 09:25:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
 
 INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, rating_workload, rating_professor, difficulty, pros, cons, advice, is_anonymous, created_at)
 VALUES (1, 1, 5, 5, 4, 5, 'MEDIUM', '예제가 실용적이고 피드백이 빠릅니다.', '매주 과제가 있어 꾸준한 노력이 필요합니다.', 'SQL 프로젝트를 일찍 시작하세요.', 1, TO_TIMESTAMP('2026-05-15 12:00:00', 'YYYY-MM-DD HH24:MI:SS'));
@@ -178,6 +186,8 @@ INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, ra
 VALUES (4, 4, 4, 5, 5, 4, 'HARD', '인공지능 과제가 흥미롭습니다.', '수학 기초가 있으면 큰 도움이 됩니다.', '확률 기초를 다시 확인하세요.', 1, TO_TIMESTAMP('2026-05-22 10:20:00', 'YYYY-MM-DD HH24:MI:SS'));
 INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, rating_workload, rating_professor, difficulty, pros, cons, advice, is_anonymous, created_at)
 VALUES (5, 10, 4, 4, 3, 4, 'MEDIUM', '데이터베이스 프로젝트가 유용했습니다.', '시험 범위가 넓었습니다.', '쿼리 튜닝을 연습하세요.', 1, TO_TIMESTAMP('2025-12-10 11:00:00', 'YYYY-MM-DD HH24:MI:SS'));
+INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, rating_workload, rating_professor, difficulty, pros, cons, advice, is_anonymous, created_at)
+VALUES (6, 12, 5, 5, 4, 5, 'MEDIUM', '데이터 모델링 실습이 많아 좋았습니다.', '복습할 내용이 많습니다.', 'ERD와 SQL을 같이 정리하면 도움이 됩니다.', 1, TO_TIMESTAMP('2026-06-02 14:30:00', 'YYYY-MM-DD HH24:MI:SS'));
 
 INSERT INTO notification (notification_id, recipient_user_id, sender_user_id, target_section_id, target_request_id, title, body, type, is_read, created_at)
 VALUES (1, 6, 3, 2, 1, '새 수강 요청', '박서연 학생이 소프트웨어공학 수강을 요청했습니다.', 'COURSE_REQUEST', 0, TO_TIMESTAMP('2026-03-03 14:10:00', 'YYYY-MM-DD HH24:MI:SS'));
