@@ -8,6 +8,8 @@
     <result property="courseId" column="course_id" />
     <result property="courseName" column="course_name" />
     <result property="professor" column="professor" />
+    <result property="semester" column="semester" />
+    <result property="credit" column="credit" />
     <result property="status" column="status" />
     <result property="ratingOverall" column="rating_overall" />
     <result property="createdAt" column="created_at" />
@@ -35,6 +37,13 @@
       c.course_code AS course_id,
       c.course_name,
       p.name AS professor,
+      TO_CHAR(sm.year) || '-' ||
+        CASE sm.term
+          WHEN 'SPRING' THEN '1'
+          WHEN 'FALL' THEN '2'
+          ELSE sm.term
+        END || '학기' AS semester,
+      c.credits AS credit,
       CASE WHEN r.review_id IS NULL THEN 'PENDING' ELSE 'SUBMITTED' END AS status,
       r.rating_overall,
       TO_CHAR(r.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at

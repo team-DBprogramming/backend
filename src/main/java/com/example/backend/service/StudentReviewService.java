@@ -23,8 +23,15 @@ public class StudentReviewService {
     Long userId = currentUser.requireStudentUserId();
     List<StudentReviewListResponse.Course> courses =
         reviewMapper.findReviews(userId, normalize(semester)).stream()
-            .map(review -> new StudentReviewListResponse.Course(
-                review.getCourseId(), review.getCourseName(), "SUBMITTED".equals(review.getStatus())))
+            .map(
+                review ->
+                    new StudentReviewListResponse.Course(
+                        review.getCourseId(),
+                        review.getCourseName(),
+                        review.getProfessor(),
+                        review.getSemester(),
+                        review.getCredit(),
+                        "SUBMITTED".equals(review.getStatus())))
             .toList();
     long completed = courses.stream().filter(StudentReviewListResponse.Course::isCompleted).count();
     return new StudentReviewListResponse(
