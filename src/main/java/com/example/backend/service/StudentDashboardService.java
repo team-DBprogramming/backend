@@ -34,7 +34,7 @@ public class StudentDashboardService {
   @Transactional(readOnly = true)
   public StudentDashboardResponse getDashboard(AuthenticatedUser currentUser, String semester) {
     Long studentUserId = currentUser.requireStudentUserId();
-    String normalizedSemester = normalize(semester);
+    String normalizedSemester = normalizeSemester(semester);
     ZonedDateTime now = ZonedDateTime.now(clock.withZone(SEOUL_ZONE));
     String today = toSchemaDayOfWeek(now.getDayOfWeek());
 
@@ -97,5 +97,14 @@ public class StudentDashboardService {
 
   private String normalize(String value) {
     return isBlank(value) ? null : value.trim();
+  }
+
+  private String normalizeSemester(String value) {
+    String normalized = normalize(value);
+    if (normalized == null) {
+      return null;
+    }
+    normalized = normalized.replaceAll("\\s*-\\s*", "-");
+    return normalized.endsWith("학기") ? normalized : normalized + "학기";
   }
 }

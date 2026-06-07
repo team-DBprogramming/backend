@@ -40,11 +40,12 @@ public class StudentCourseService {
     int normalizedPage = page == null || page < 1 ? 1 : page;
     int normalizedSize = size == null || size < 1 ? 20 : size;
     int offset = (normalizedPage - 1) * normalizedSize;
+    String normalizedSemester = normalizeSemester(semester);
     List<String> normalizedDays = normalizeStrings(days);
     List<Integer> normalizedCredits = normalizeIntegers(credits);
     Integer total =
         courseMapper.countCourses(
-            normalize(semester),
+            normalizedSemester,
             normalize(keyword),
             normalize(courseCategory),
             normalize(major),
@@ -55,7 +56,7 @@ public class StudentCourseService {
             normalize(endTime));
     List<StudentCourseSummary> courses =
         courseMapper.findCourses(
-            normalize(semester),
+            normalizedSemester,
             normalize(keyword),
             normalize(courseCategory),
             normalize(major),
@@ -137,6 +138,15 @@ public class StudentCourseService {
 
   private String normalize(String value) {
     return isBlank(value) ? null : value.trim();
+  }
+
+  private String normalizeSemester(String value) {
+    String normalized = normalize(value);
+    if (normalized == null) {
+      return null;
+    }
+    normalized = normalized.replaceAll("\\s*-\\s*", "-");
+    return normalized.endsWith("학기") ? normalized : normalized + "학기";
   }
 
   private String valueOrDefault(String value, String defaultValue) {
