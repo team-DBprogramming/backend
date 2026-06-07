@@ -2,22 +2,27 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.student.StudentApiResponse;
 import com.example.backend.dto.student.StudentBorrowRequest;
+import com.example.backend.dto.student.StudentCartAddRequest;
 import com.example.backend.dto.student.StudentCourseDetailResponse;
 import com.example.backend.dto.student.StudentCourseListResponse;
 import com.example.backend.dto.student.StudentMutationResponse;
 import com.example.backend.security.CustomUserDetails;
+import com.example.backend.service.StudentCartService;
 import com.example.backend.service.StudentCourseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -26,9 +31,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class StudentCourseController {
 
   private final StudentCourseService courseService;
+  private final StudentCartService cartService;
 
-  public StudentCourseController(StudentCourseService courseService) {
+  public StudentCourseController(StudentCourseService courseService, StudentCartService cartService) {
     this.courseService = courseService;
+    this.cartService = cartService;
   }
 
   @GetMapping
@@ -72,5 +79,30 @@ public class StudentCourseController {
         "S201",
         "빌넣 신청 성공",
         courseService.requestBorrow(userDetails.toAuthenticatedUser(), courseId, request));
+  }
+
+  @PostMapping({"/{courseId}/cart", "/{courseId}/scrap"})
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "강의 찜 추가", description = "강의를 현재 로그인한 학생의 장바구니에 추가합니다.")
+  public StudentApiResponse<StudentMutationResponse> addCourseCart(
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+      @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
+      @RequestParam(value = "division", required = false) String division) {
+    return StudentApiResponse.success(
+        "S201",
+        "강의 찜 추가 성공",
+        cartService.addCart(userDetails.toAuthenticatedUser(), new StudentCartAddRequest(courseId, division)));
+  }
+
+  @DeleteMapping({"/{courseId}/cart", "/{courseId}/scrap"})
+  @Operation(summary = "강의 찜 해제", description = "강의를 현재 로그인한 학생의 장바구니에서 제거합니다.")
+  public StudentApiResponse<StudentMutationResponse> deleteCourseCart(
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+      @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
+      @RequestParam(value = "division", required = false) String division) {
+    return StudentApiResponse.success(
+        "S200",
+        "강의 찜 해제 성공",
+        cartService.deleteCartByCourse(userDetails.toAuthenticatedUser(), courseId, division));
   }
 }

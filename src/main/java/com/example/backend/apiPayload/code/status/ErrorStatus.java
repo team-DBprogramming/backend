@@ -37,7 +37,9 @@ public enum ErrorStatus implements BaseErrorCode {
   PROFESSOR_FORBIDDEN(HttpStatus.FORBIDDEN, "PROFESSOR4031", "교수 권한이 필요합니다."),
   STUDENT_FORBIDDEN(HttpStatus.FORBIDDEN, "STUDENT4031", "학생 권한이 필요합니다."),
   STUDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "STUDENT4041", "학생 정보를 찾을 수 없습니다."),
-  STUDENT_ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "STUDENT4042", "수강 내역을 찾을 수 없습니다.");
+  STUDENT_ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "STUDENT4042", "수강 내역을 찾을 수 없습니다."),
+  STUDENT_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "STUDENT4043", "강의를 찾을 수 없습니다."),
+  STUDENT_CART_NOT_FOUND(HttpStatus.NOT_FOUND, "STUDENT4044", "장바구니 항목을 찾을 수 없습니다.");
 
   private final HttpStatus httpStatus;
   private final String code;
