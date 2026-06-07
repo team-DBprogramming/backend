@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/courses")
+@RequestMapping({"/courses", "/course"})
 @Tag(name = "Student Courses", description = "학생 강의 검색, 상세, 빌넣 신청 API")
 public class StudentCourseController {
 

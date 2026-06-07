@@ -33,7 +33,7 @@
   <resultMap id="CourseReviewResultMap" type="com.example.backend.dto.student.StudentCourseReviewItem">
     <result property="rating" column="rating" />
     <result property="difficulty" column="difficulty" />
-    <result property="comment" column="comment" />
+    <result property="comment" column="review_comment" />
     <result property="semester" column="semester" />
     <result property="createdAt" column="created_at" />
   </resultMap>
@@ -299,7 +299,7 @@
         WHEN 'MEDIUM' THEN 'NORMAL'
         ELSE r.difficulty
       END AS difficulty,
-      COALESCE(r.pros, r.advice) AS comment,
+      COALESCE(r.pros, r.advice) AS review_comment,
       TO_CHAR(sm.year) || '-' ||
         CASE sm.term
           WHEN 'SPRING' THEN '1'
