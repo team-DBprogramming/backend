@@ -51,13 +51,11 @@
         WHERE ss.section_id = cs.section_id
       ) AS schedule,
       (
-        SELECT LISTAGG(room_name, ', ') WITHIN GROUP (ORDER BY room_name)
-        FROM (
-          SELECT DISTINCT cr.building || ' ' || cr.room_no AS room_name
-          FROM section_schedule ss
-          JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-          WHERE ss.section_id = cs.section_id
-        )
+        SELECT LISTAGG(cr.building || ' ' || cr.room_no, ', ')
+          WITHIN GROUP (ORDER BY cr.building || ' ' || cr.room_no)
+        FROM section_schedule ss
+        JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+        WHERE ss.section_id = cs.section_id
       ) AS room,
       CASE
         WHEN COALESCE(cs.enrolled_count, 0) <![CDATA[>=]]> cs.capacity THEN 'FULL'
@@ -82,14 +80,34 @@
   </select>
 
   <insert id="insertCart">
-    INSERT INTO cart_item (student_id, section_id, added_at)
-    VALUES (#{studentId}, #{sectionId}, SYSTIMESTAMP)
+    MERGE INTO cart_item ci
+    USING (
+      SELECT #{studentId} AS student_id, #{sectionId} AS section_id
+      FROM dual
+    ) src
+    ON (ci.student_id = src.student_id AND ci.section_id = src.section_id)
+    WHEN NOT MATCHED THEN
+      INSERT (student_id, section_id, added_at)
+      VALUES (src.student_id, src.section_id, SYSTIMESTAMP)
   </insert>
+
+  <select id="findCartId" resultType="long">
+    SELECT cart_id
+    FROM cart_item
+    WHERE student_id = #{studentId}
+      AND section_id = #{sectionId}
+  </select>
 
   <delete id="deleteCart">
     DELETE FROM cart_item
     WHERE cart_id = #{cartItemId}
       AND student_id = #{studentId}
+  </delete>
+
+  <delete id="deleteCartBySection">
+    DELETE FROM cart_item
+    WHERE student_id = #{studentId}
+      AND section_id = #{sectionId}
   </delete>
 
   <select id="countCart" resultType="int">

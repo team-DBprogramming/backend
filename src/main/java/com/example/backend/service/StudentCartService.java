@@ -1,5 +1,7 @@
 package com.example.backend.service;
 
+import com.example.backend.apiPayload.code.status.ErrorStatus;
+import com.example.backend.apiPayload.exception.handler.StudentHandler;
 import com.example.backend.dto.student.StudentBulkEnrollResponse;
 import com.example.backend.dto.student.StudentBulkEnrollRequest;
 import com.example.backend.dto.student.StudentCartAddRequest;
@@ -24,7 +26,7 @@ public class StudentCartService {
 
   @Transactional(readOnly = true)
   public StudentCartListResponse getCart(AuthenticatedUser currentUser) {
-    Long studentId = cartMapper.findStudentId(currentUser.requireStudentUserId());
+    Long studentId = requireStudentId(currentUser);
     List<StudentCartItem> items = cartMapper.findCartItems(studentId);
     int totalCredits = items.stream().map(StudentCartItem::getCredit).filter(v -> v != null).mapToInt(v -> v).sum();
     return new StudentCartListResponse(items, totalCredits, MAX_CREDITS);
@@ -32,22 +34,38 @@ public class StudentCartService {
 
   @Transactional
   public StudentMutationResponse addCart(AuthenticatedUser currentUser, StudentCartAddRequest request) {
-    Long studentId = cartMapper.findStudentId(currentUser.requireStudentUserId());
-    Long sectionId = cartMapper.findSectionId(request.courseId(), normalizeDivision(request.division()));
+    Long studentId = requireStudentId(currentUser);
+    Long sectionId = requireSectionId(request.courseId(), normalizeDivision(request.division()));
     cartMapper.insertCart(studentId, sectionId);
-    return new StudentMutationResponse(String.valueOf(sectionId), "ADDED");
+    Long cartId = cartMapper.findCartId(studentId, sectionId);
+    return new StudentMutationResponse(String.valueOf(cartId), "ADDED");
   }
 
   @Transactional
   public StudentMutationResponse deleteCart(AuthenticatedUser currentUser, Long cartItemId) {
-    Long studentId = cartMapper.findStudentId(currentUser.requireStudentUserId());
-    cartMapper.deleteCart(studentId, cartItemId);
+    Long studentId = requireStudentId(currentUser);
+    int deleted = cartMapper.deleteCart(studentId, cartItemId);
+    if (deleted == 0) {
+      throw new StudentHandler(ErrorStatus.STUDENT_CART_NOT_FOUND);
+    }
     return new StudentMutationResponse(String.valueOf(cartItemId), "DELETED");
   }
 
   @Transactional
+  public StudentMutationResponse deleteCartByCourse(
+      AuthenticatedUser currentUser, String courseId, String division) {
+    Long studentId = requireStudentId(currentUser);
+    Long sectionId = requireSectionId(courseId, normalizeDivision(division));
+    int deleted = cartMapper.deleteCartBySection(studentId, sectionId);
+    if (deleted == 0) {
+      throw new StudentHandler(ErrorStatus.STUDENT_CART_NOT_FOUND);
+    }
+    return new StudentMutationResponse(String.valueOf(sectionId), "DELETED");
+  }
+
+  @Transactional
   public StudentBulkEnrollResponse bulkEnroll(AuthenticatedUser currentUser, StudentBulkEnrollRequest request) {
-    Long studentId = cartMapper.findStudentId(currentUser.requireStudentUserId());
+    Long studentId = requireStudentId(currentUser);
     List<Long> cartItemIds = request == null ? null : request.cartItemIds();
     int requested =
         cartItemIds == null || cartItemIds.isEmpty()
@@ -67,5 +85,21 @@ public class StudentCartService {
 
   private String normalizeDivision(String division) {
     return division == null || division.trim().isEmpty() ? null : division.replace("분반", "").trim();
+  }
+
+  private Long requireStudentId(AuthenticatedUser currentUser) {
+    Long studentId = cartMapper.findStudentId(currentUser.requireStudentUserId());
+    if (studentId == null) {
+      throw new StudentHandler(ErrorStatus.STUDENT_NOT_FOUND);
+    }
+    return studentId;
+  }
+
+  private Long requireSectionId(String courseId, String division) {
+    Long sectionId = cartMapper.findSectionId(courseId, division);
+    if (sectionId == null) {
+      throw new StudentHandler(ErrorStatus.STUDENT_COURSE_NOT_FOUND);
+    }
+    return sectionId;
   }
 }

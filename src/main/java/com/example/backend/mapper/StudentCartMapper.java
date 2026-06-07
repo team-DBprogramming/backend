@@ -16,7 +16,11 @@ public interface StudentCartMapper {
 
   void insertCart(@Param("studentId") Long studentId, @Param("sectionId") Long sectionId);
 
+  Long findCartId(@Param("studentId") Long studentId, @Param("sectionId") Long sectionId);
+
   int deleteCart(@Param("studentId") Long studentId, @Param("cartItemId") Long cartItemId);
+
+  int deleteCartBySection(@Param("studentId") Long studentId, @Param("sectionId") Long sectionId);
 
   int countCart(@Param("studentId") Long studentId);
 

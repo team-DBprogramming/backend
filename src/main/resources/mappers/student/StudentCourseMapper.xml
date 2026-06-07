@@ -67,13 +67,11 @@
         WHERE ss.section_id = cs.section_id
       ) AS schedule,
       (
-        SELECT LISTAGG(room_name, ', ') WITHIN GROUP (ORDER BY room_name)
-        FROM (
-          SELECT DISTINCT cr.building || ' ' || cr.room_no AS room_name
-          FROM section_schedule ss
-          JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-          WHERE ss.section_id = cs.section_id
-        )
+        SELECT LISTAGG(cr.building || ' ' || cr.room_no, ', ')
+          WITHIN GROUP (ORDER BY cr.building || ' ' || cr.room_no)
+        FROM section_schedule ss
+        JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+        WHERE ss.section_id = cs.section_id
       ) AS room,
       cs.capacity,
       COALESCE(cs.enrolled_count, 0) AS enrolled,
@@ -215,13 +213,11 @@
         WHERE ss.section_id = cs.section_id
       ) AS schedule,
       (
-        SELECT LISTAGG(room_name, ', ') WITHIN GROUP (ORDER BY room_name)
-        FROM (
-          SELECT DISTINCT cr.building || ' ' || cr.room_no AS room_name
-          FROM section_schedule ss
-          JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-          WHERE ss.section_id = cs.section_id
-        )
+        SELECT LISTAGG(cr.building || ' ' || cr.room_no, ', ')
+          WITHIN GROUP (ORDER BY cr.building || ' ' || cr.room_no)
+        FROM section_schedule ss
+        JOIN classroom cr ON cr.classroom_id = ss.classroom_id
+        WHERE ss.section_id = cs.section_id
       ) AS room,
       cs.capacity,
       COALESCE(cs.enrolled_count, 0) AS enrolled,
