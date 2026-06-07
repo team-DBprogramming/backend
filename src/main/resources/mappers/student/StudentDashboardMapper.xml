@@ -82,7 +82,7 @@
         END AS current_semester
     FROM student s
     JOIN department d ON d.dept_id = s.dept_id
-    LEFT JOIN semester sm ON <include refid="semesterCondition" />
+    LEFT JOIN semester sm ON sm.is_current = 1
     WHERE s.user_id = #{userId}
   </select>
 
