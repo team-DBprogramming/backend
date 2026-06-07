@@ -33,19 +33,19 @@
   </sql>
 
   <sql id="semesterCondition">
-    (
-      (#{semester} IS NULL AND sm.is_current = 1)
-      OR
-      (
-        #{semester} IS NOT NULL
-        AND TO_CHAR(sm.year) || '-' ||
+    <choose>
+      <when test="semester == null">
+        sm.is_current = 1
+      </when>
+      <otherwise>
+        TO_CHAR(sm.year) || '-' ||
           CASE sm.term
             WHEN 'SPRING' THEN '1'
             WHEN 'FALL' THEN '2'
             ELSE sm.term
-          END = #{semester}
-      )
-    )
+          END || '학기' = #{semester}
+      </otherwise>
+    </choose>
   </sql>
 
   <select id="findEnrollmentTimetable" resultMap="TimetableResultMap">

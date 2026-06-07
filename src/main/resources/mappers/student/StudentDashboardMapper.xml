@@ -39,17 +39,36 @@
   </resultMap>
 
   <sql id="semesterCondition">
-    (
-      (#{semester} IS NULL AND sm.is_current = 1)
-      OR (#{semester} IS NOT NULL AND TO_CHAR(sm.year) || '-' ||
-        CASE sm.term
-          WHEN 'SPRING' THEN '1'
-          WHEN 'FALL' THEN '2'
-          ELSE sm.term
-        END || '학기' = #{semester})
-    )
+    <choose>
+      <when test="semester == null">
+        sm.is_current = 1
+      </when>
+      <otherwise>
+        TO_CHAR(sm.year) || '-' ||
+          CASE sm.term
+            WHEN 'SPRING' THEN '1'
+            WHEN 'FALL' THEN '2'
+            ELSE sm.term
+          END || '학기' = #{semester}
+      </otherwise>
+    </choose>
   </sql>
 
+  <sql id="cartSemesterCondition">
+    <choose>
+      <when test="semester == null">
+        csm.is_current = 1
+      </when>
+      <otherwise>
+        TO_CHAR(csm.year) || '-' ||
+          CASE csm.term
+            WHEN 'SPRING' THEN '1'
+            WHEN 'FALL' THEN '2'
+            ELSE csm.term
+          END || '학기' = #{semester}
+      </otherwise>
+    </choose>
+  </sql>
   <select id="findStudentInfo" resultMap="StudentInfoResultMap">
     SELECT
       s.name,
@@ -120,15 +139,7 @@
         JOIN course_section ccs ON ccs.section_id = ci.section_id
         JOIN semester csm ON csm.semester_id = ccs.semester_id
         WHERE ci.student_id = s.student_id
-          AND (
-            (#{semester} IS NULL AND csm.is_current = 1)
-            OR (#{semester} IS NOT NULL AND TO_CHAR(csm.year) || '-' ||
-              CASE csm.term
-                WHEN 'SPRING' THEN '1'
-                WHEN 'FALL' THEN '2'
-                ELSE csm.term
-              END || '학기' = #{semester})
-          )
+          AND <include refid="cartSemesterCondition" />
       ) AS cart_count
     FROM student s
     WHERE s.user_id = #{userId}

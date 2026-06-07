@@ -30,7 +30,7 @@ public class StudentTimetableService {
   @Transactional(readOnly = true)
   public StudentTimetableResponse getTimetable(AuthenticatedUser currentUser, String semester) {
     Long userId = currentUser.requireStudentUserId();
-    String normalizedSemester = normalize(semester);
+    String normalizedSemester = normalizeSemester(semester);
     return toResponse(normalizedSemester, timetableMapper.findEnrollmentTimetable(userId, normalizedSemester), true);
   }
 
@@ -51,6 +51,15 @@ public class StudentTimetableService {
 
   private String normalize(String value) {
     return value == null || value.trim().isEmpty() ? null : value.trim();
+  }
+
+  private String normalizeSemester(String value) {
+    String normalized = normalize(value);
+    if (normalized == null) {
+      return null;
+    }
+    normalized = normalized.replaceAll("\\s*-\\s*", "-");
+    return normalized.endsWith("학기") ? normalized : normalized + "학기";
   }
 
   public static StudentTimetableResponse toResponse(
