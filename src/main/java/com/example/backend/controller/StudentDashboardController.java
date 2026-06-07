@@ -30,7 +30,7 @@ public class StudentDashboardController {
       description = "학생 정보, 수강신청 상태, 학점 현황, 오늘 시간표, 빠른 액션 정보를 조회합니다.")
   public StudentApiResponse<StudentDashboardResponse> getDashboard(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
-      @Parameter(description = "조회 학기", example = "2026-1학기")
+      @Parameter(description = "조회 학기", example = "2026-1")
           @RequestParam(value = "semester", required = false)
           String semester) {
     return StudentApiResponse.success(

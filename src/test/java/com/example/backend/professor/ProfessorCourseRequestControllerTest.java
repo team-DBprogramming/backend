@@ -70,7 +70,7 @@ class ProfessorCourseRequestControllerTest {
     when(requestService.getRequests(eq(professorUser()), eq("CSE301"), eq("01"), eq(1), eq(20)))
         .thenReturn(
             new CourseRequestListResponse(
-                new CourseRequestSummary("데이터베이스개론", "CSE301", "01분반", "2026-1학기", 6, 3),
+                new CourseRequestSummary("데이터베이스개론", "CSE301", "01분반", "2026-1", 6, 3),
                 List.of(
                     new CourseRequestItem(
                         "req-db-001",

@@ -31,7 +31,7 @@ public class ProfessorReviewService {
       AuthenticatedUser currentUser, String courseId, String division, String semester, String sort) {
     Long professorUserId = currentUser.requireProfessorUserId();
     String normalizedDivision = normalizeRequiredDivision(division);
-    String normalizedSemester = normalize(semester);
+    String normalizedSemester = normalizeSemester(semester);
     String normalizedSort = normalizeSort(sort);
 
     if (reviewMapper.existsCourse(professorUserId, courseId, normalizedDivision, normalizedSemester)
@@ -125,6 +125,15 @@ public class ProfessorReviewService {
 
   private String normalize(String value) {
     return isBlank(value) ? null : value.trim();
+  }
+
+  private String normalizeSemester(String value) {
+    String normalized = normalize(value);
+    if (normalized == null) {
+      return null;
+    }
+    normalized = normalized.replaceAll("\\s*-\\s*", "-");
+    return normalized.replaceAll("\\s*학기$", "");
   }
 
   private boolean isBlank(String value) {

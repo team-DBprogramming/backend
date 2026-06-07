@@ -43,7 +43,7 @@
             WHEN 'SPRING' THEN '1'
             WHEN 'FALL' THEN '2'
             ELSE sm.term
-          END || '학기' = #{semester}
+          END = #{semester}
       </otherwise>
     </choose>
   </sql>

@@ -39,7 +39,7 @@
           WHEN 'SPRING' THEN '1'
           WHEN 'FALL' THEN '2'
           ELSE sm.term
-        END || '학기' AS semester,
+        END AS semester,
       cs.enrolled_count AS total_students,
       (
         SELECT COUNT(*)

@@ -34,7 +34,7 @@ class ProfessorStudentExportControllerTest {
             eq(professorUser()), eq("CSE301"), eq("01"), eq("xlsx"), eq("홍"), eq(3), eq("컴퓨터")))
         .thenReturn(
             new ProfessorStudentExportFile(
-                "학생관리_데이터베이스개론_2026-1학기_2026-05-31.xlsx",
+                "학생관리_데이터베이스개론_2026-1_2026-05-31.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 new byte[] {'P', 'K', 1, 2}));
 

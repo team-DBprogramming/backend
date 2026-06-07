@@ -141,7 +141,7 @@ public final class OpenApiExamples {
             "courseName": "데이터베이스개론",
             "courseId": "CSE301",
             "division": "01분반",
-            "semester": "2026-1학기",
+            "semester": "2026-1",
             "totalStudents": 6,
             "requestCount": 3
           },
@@ -192,7 +192,7 @@ public final class OpenApiExamples {
             "courseName": "데이터베이스개론",
             "courseId": "CSE301",
             "division": "01분반",
-            "semester": "2026-1학기",
+            "semester": "2026-1",
             "totalStudents": 6,
             "requestCount": 3
           },

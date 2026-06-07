@@ -23,8 +23,9 @@ public class StudentReviewService {
   @Transactional(readOnly = true)
   public StudentReviewListResponse getReviews(AuthenticatedUser currentUser, String semester) {
     Long userId = currentUser.requireStudentUserId();
+    String normalizedSemester = normalizeSemester(semester);
     List<StudentReviewListResponse.Course> courses =
-        reviewMapper.findReviews(userId, normalize(semester)).stream()
+        reviewMapper.findReviews(userId, normalizedSemester).stream()
             .map(
                 review ->
                     new StudentReviewListResponse.Course(
@@ -36,8 +37,9 @@ public class StudentReviewService {
                         "SUBMITTED".equals(review.getStatus())))
             .toList();
     long completed = courses.stream().filter(StudentReviewListResponse.Course::isCompleted).count();
+    String currentSemester = normalizedSemester == null ? reviewMapper.findCurrentSemester() : normalizedSemester;
     return new StudentReviewListResponse(
-        courses, new StudentReviewListResponse.Summary((int) completed, courses.size() - (int) completed));
+        currentSemester, courses, new StudentReviewListResponse.Summary((int) completed, courses.size() - (int) completed));
   }
 
   @Transactional
@@ -60,7 +62,11 @@ public class StudentReviewService {
     return new StudentReviewSubmitResponse(String.valueOf(reviewId), submittedAt);
   }
 
-  private String normalize(String value) {
-    return value == null || value.trim().isEmpty() ? null : value.trim();
+  private String normalizeSemester(String value) {
+    if (value == null || value.trim().isEmpty()) {
+      return null;
+    }
+    String normalized = value.trim().replaceAll("\\s*-\\s*", "-");
+    return normalized.replaceAll("\\s*학기$", "");
   }
 }

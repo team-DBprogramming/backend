@@ -105,6 +105,6 @@ public class StudentDashboardService {
       return null;
     }
     normalized = normalized.replaceAll("\\s*-\\s*", "-");
-    return normalized.endsWith("학기") ? normalized : normalized + "학기";
+    return normalized.replaceAll("\\s*학기$", "");
   }
 }

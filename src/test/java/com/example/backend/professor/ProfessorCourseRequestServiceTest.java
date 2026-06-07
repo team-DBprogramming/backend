@@ -97,7 +97,7 @@ class ProfessorCourseRequestServiceTest {
   @Test
   void listRequestsReturnsSummaryAndPendingRequestsWithDefaultPaging() {
     requestMapper.summary =
-        new CourseRequestSummary("데이터베이스개론", "CSE301", "01분반", "2026-1학기", 6, 3);
+        new CourseRequestSummary("데이터베이스개론", "CSE301", "01분반", "2026-1", 6, 3);
     requestMapper.requests.add(
         new CourseRequestItem(
             "req-db-001",

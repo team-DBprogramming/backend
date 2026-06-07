@@ -48,7 +48,7 @@
         WHEN 'SPRING' THEN '1'
         WHEN 'FALL' THEN '2'
         ELSE sm.term
-      END || '학기' = #{semester}
+      END = #{semester}
   </sql>
 
   <sql id="courseBase">
@@ -309,7 +309,7 @@
           WHEN 'SPRING' THEN '1'
           WHEN 'FALL' THEN '2'
           ELSE sm.term
-        END || '학기' AS semester,
+        END AS semester,
       TO_CHAR(r.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
     FROM review r
     JOIN enrollment e ON e.enrollment_id = r.enrollment_id

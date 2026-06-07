@@ -32,6 +32,18 @@
     FETCH FIRST 1 ROW ONLY
   </select>
 
+  <select id="findCurrentSemester" resultType="string">
+    SELECT TO_CHAR(sm.year) || '-' ||
+      CASE sm.term
+        WHEN 'SPRING' THEN '1'
+        WHEN 'FALL' THEN '2'
+        ELSE sm.term
+      END
+    FROM semester sm
+    WHERE sm.is_current = 1
+    FETCH FIRST 1 ROW ONLY
+  </select>
+
   <select id="findReviews" resultMap="ReviewItemResultMap">
     SELECT
       c.course_code AS course_id,
@@ -42,7 +54,7 @@
           WHEN 'SPRING' THEN '1'
           WHEN 'FALL' THEN '2'
           ELSE sm.term
-        END || '학기' AS semester,
+        END AS semester,
       c.credits AS credit,
       CASE WHEN r.review_id IS NULL THEN 'PENDING' ELSE 'SUBMITTED' END AS status,
       r.rating_overall,
@@ -65,7 +77,7 @@
           WHEN 'SPRING' THEN '1'
           WHEN 'FALL' THEN '2'
           ELSE sm.term
-        END || '학기' = #{semester}
+        END = #{semester}
     </otherwise>
   </choose>
   ORDER BY c.course_name, cs.section_no

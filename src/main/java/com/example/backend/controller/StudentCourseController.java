@@ -34,7 +34,7 @@ public class StudentCourseController {
   @GetMapping
   @Operation(summary = "강의 목록 검색", description = "학기, 키워드, 분류, 전공, 유형, 요일, 시간, 학점 조건으로 강의를 검색합니다.")
   public StudentApiResponse<StudentCourseListResponse> getCourses(
-      @RequestParam("semester") String semester,
+      @Parameter(description = "조회 학기", example = "2026-1") @RequestParam("semester") String semester,
       @RequestParam(value = "keyword", required = false) String keyword,
       @RequestParam(value = "courseCategory", required = false) String courseCategory,
       @RequestParam(value = "major", required = false) String major,

@@ -24,7 +24,7 @@ public class ProfessorCourseService {
   public ProfessorCourseListResponse getCourses(
       AuthenticatedUser currentUser, String semester, String keyword) {
     Long professorUserId = currentUser.requireProfessorUserId();
-    String normalizedSemester = normalize(semester);
+    String normalizedSemester = normalizeSemester(semester);
     String normalizedKeyword = normalize(keyword);
     List<CourseItem> courses =
         courseMapper.findCourses(professorUserId, normalizedSemester, normalizedKeyword).stream()
@@ -72,6 +72,15 @@ public class ProfessorCourseService {
 
   private String normalize(String value) {
     return isBlank(value) ? null : value.trim();
+  }
+
+  private String normalizeSemester(String value) {
+    String normalized = normalize(value);
+    if (normalized == null) {
+      return null;
+    }
+    normalized = normalized.replaceAll("\\s*-\\s*", "-");
+    return normalized.replaceAll("\\s*학기$", "");
   }
 
   private boolean isBlank(String value) {

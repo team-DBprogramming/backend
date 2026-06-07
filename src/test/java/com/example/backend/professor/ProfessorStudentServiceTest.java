@@ -34,7 +34,7 @@ class ProfessorStudentServiceTest {
   @Test
   void getStudentsReturnsSelectedDivisionSummaryAndPagedStudents() {
     studentMapper.summary =
-        new ProfessorStudentSummary("데이터베이스개론", "CSE301", "01분반", "2026-1학기", 6, 3);
+        new ProfessorStudentSummary("데이터베이스개론", "CSE301", "01분반", "2026-1", 6, 3);
     studentMapper.students.add(
         new ProfessorStudentItem("2024000001", "정도훈", 3, "컴퓨터공학과", true));
     studentMapper.students.add(

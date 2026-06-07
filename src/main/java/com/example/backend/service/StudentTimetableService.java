@@ -59,7 +59,7 @@ public class StudentTimetableService {
       return null;
     }
     normalized = normalized.replaceAll("\\s*-\\s*", "-");
-    return normalized.endsWith("학기") ? normalized : normalized + "학기";
+    return normalized.replaceAll("\\s*학기$", "");
   }
 
   public static StudentTimetableResponse toResponse(

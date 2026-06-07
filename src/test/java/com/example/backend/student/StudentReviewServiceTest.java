@@ -29,17 +29,18 @@ class StudentReviewServiceTest {
 
   @Test
   void getReviewsIncludesCourseMetadataAndSummary() {
-    StudentReviewItem submitted = reviewItem("CSE3033", "데이터베이스 시스템", "한지훈", "2026-1학기", 3, "SUBMITTED");
-    StudentReviewItem pending = reviewItem("CSE4050", "소프트웨어공학", "한지훈", "2026-1학기", 3, "PENDING");
+    StudentReviewItem submitted = reviewItem("CSE3033", "데이터베이스 시스템", "한지훈", "2026-1", 3, "SUBMITTED");
+    StudentReviewItem pending = reviewItem("CSE4050", "소프트웨어공학", "한지훈", "2026-1", 3, "PENDING");
     reviewMapper.reviews.add(submitted);
     reviewMapper.reviews.add(pending);
 
     StudentReviewListResponse response = reviewService.getReviews(studentUser(), "2026-1");
 
     assertThat(response.courses()).hasSize(2);
+    assertThat(response.currentSemester()).isEqualTo("2026-1");
     assertThat(response.courses().get(0).courseId()).isEqualTo("CSE3033");
     assertThat(response.courses().get(0).professor()).isEqualTo("한지훈");
-    assertThat(response.courses().get(0).semester()).isEqualTo("2026-1학기");
+    assertThat(response.courses().get(0).semester()).isEqualTo("2026-1");
     assertThat(response.courses().get(0).credit()).isEqualTo(3);
     assertThat(response.courses().get(0).isCompleted()).isTrue();
     assertThat(response.courses().get(1).isCompleted()).isFalse();
@@ -47,6 +48,15 @@ class StudentReviewServiceTest {
     assertThat(response.summary().pending()).isEqualTo(1);
     assertThat(reviewMapper.requestedUserId).isEqualTo(1L);
     assertThat(reviewMapper.requestedSemester).isEqualTo("2026-1");
+  }
+
+  @Test
+  void getReviewsUsesCurrentSemesterWhenSemesterIsMissing() {
+    StudentReviewListResponse response = reviewService.getReviews(studentUser(), null);
+
+    assertThat(response.currentSemester()).isEqualTo("2026-1");
+    assertThat(reviewMapper.currentSemesterRequested).isTrue();
+    assertThat(reviewMapper.requestedSemester).isNull();
   }
 
   @Test
@@ -94,6 +104,7 @@ class StudentReviewServiceTest {
     private Long studentId = 1L;
     private Long enrollmentId = 1L;
     private Long insertedEnrollmentId;
+    private boolean currentSemesterRequested;
 
     @Override
     public Long findStudentId(Long userId) {
@@ -103,6 +114,12 @@ class StudentReviewServiceTest {
     @Override
     public Long findEnrollmentId(Long studentId, String courseId) {
       return enrollmentId;
+    }
+
+    @Override
+    public String findCurrentSemester() {
+      currentSemesterRequested = true;
+      return "2026-1";
     }
 
     @Override

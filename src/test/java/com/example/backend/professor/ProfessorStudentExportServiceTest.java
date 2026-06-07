@@ -36,7 +36,7 @@ class ProfessorStudentExportServiceTest {
   @Test
   void exportXlsxUsesFiltersAndFeatureSpecFileName() {
     exportMapper.course =
-        new ProfessorStudentExportCourse("데이터베이스개론", "CSE301", "01분반", "2026-1학기");
+        new ProfessorStudentExportCourse("데이터베이스개론", "CSE301", "01분반", "2026-1");
     exportMapper.rows.add(
         new ProfessorStudentExportRow(
             "2024111111", "홍길동", 3, "컴퓨터공학과", "ENROLLED", "2026-02-09 09:12", null));
@@ -50,7 +50,7 @@ class ProfessorStudentExportServiceTest {
     assertThat(exportMapper.requestedKeyword).isEqualTo("홍");
     assertThat(exportMapper.requestedGrade).isEqualTo(3);
     assertThat(exportMapper.requestedMajor).isEqualTo("컴퓨터");
-    assertThat(file.filename()).isEqualTo("학생관리_데이터베이스개론_2026-1학기_2026-05-31.xlsx");
+    assertThat(file.filename()).isEqualTo("학생관리_데이터베이스개론_2026-1_2026-05-31.xlsx");
     assertThat(file.contentType())
         .isEqualTo("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     assertThat(file.bytes()).startsWith(new byte[] {'P', 'K'});
@@ -59,7 +59,7 @@ class ProfessorStudentExportServiceTest {
   @Test
   void exportCsvUsesCsvContentTypeAndExtension() {
     exportMapper.course =
-        new ProfessorStudentExportCourse("데이터베이스개론", "CSE301", "01분반", "2026-1학기");
+        new ProfessorStudentExportCourse("데이터베이스개론", "CSE301", "01분반", "2026-1");
     exportMapper.rows.add(
         new ProfessorStudentExportRow(
             "2024111111", "홍길동", 3, "컴퓨터공학과", "ENROLLED", "2026-02-09 09:12", null));

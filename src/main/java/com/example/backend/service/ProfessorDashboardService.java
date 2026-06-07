@@ -121,7 +121,11 @@ public class ProfessorDashboardService {
   }
 
   private String normalizeSemester(String semester) {
-    return isBlank(semester) ? null : semester.trim();
+    if (isBlank(semester)) {
+      return null;
+    }
+    String normalized = semester.trim().replaceAll("\\s*-\\s*", "-");
+    return normalized.replaceAll("\\s*학기$", "");
   }
 
   private boolean isBlank(String value) {

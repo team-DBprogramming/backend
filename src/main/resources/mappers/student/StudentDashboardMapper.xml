@@ -49,7 +49,7 @@
             WHEN 'SPRING' THEN '1'
             WHEN 'FALL' THEN '2'
             ELSE sm.term
-          END || '학기' = #{semester}
+          END = #{semester}
       </otherwise>
     </choose>
   </sql>
@@ -65,7 +65,7 @@
             WHEN 'SPRING' THEN '1'
             WHEN 'FALL' THEN '2'
             ELSE csm.term
-          END || '학기' = #{semester}
+          END = #{semester}
       </otherwise>
     </choose>
   </sql>
@@ -79,7 +79,7 @@
           WHEN 'SPRING' THEN '1'
           WHEN 'FALL' THEN '2'
           ELSE sm.term
-        END || '학기' AS current_semester
+        END AS current_semester
     FROM student s
     JOIN department d ON d.dept_id = s.dept_id
     LEFT JOIN semester sm ON <include refid="semesterCondition" />
