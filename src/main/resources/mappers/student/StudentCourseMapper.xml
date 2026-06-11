@@ -187,6 +187,20 @@
     FETCH FIRST 1 ROW ONLY
   </select>
 
+  <select id="findCourseDetailFields" resultType="java.util.HashMap">
+    SELECT
+      textbook,
+      assignment_count,
+      midterm_rate,
+      final_rate,
+      assignment_rate,
+      attendance_rate,
+      prerequisite,
+      note
+    FROM lecture
+    WHERE no = #{courseId}
+  </select>
+
   <select id="findDescription" resultType="string">
     SELECT note
     FROM lecture
@@ -271,6 +285,27 @@
       AND c.c_status != 'CANCELLED'
       AND <include refid="divisionCondition" />
     ORDER BY c.c_no
+    FETCH FIRST 1 ROW ONLY
+  </select>
+
+  <select id="countCurrentEnrollment" resultType="int">
+    SELECT COUNT(*)
+    FROM enroll e
+    WHERE e.s_id = #{studentId}
+      AND e.c_id = #{courseId}
+      AND (#{division} IS NULL OR TO_CHAR(e.c_no) = #{division})
+      AND e.e_year = Date2EnrollYear(SYSDATE)
+      AND e.e_semester = Date2EnrollSemester(SYSDATE)
+      AND e.e_status = 'ENROLLED'
+  </select>
+
+  <select id="findBorrowRequestStatus" resultType="string">
+    SELECT status
+    FROM course_request cr
+    WHERE cr.s_id = #{studentId}
+      AND cr.c_id = #{courseId}
+      AND (#{division} IS NULL OR TO_CHAR(cr.c_no) = #{division})
+    ORDER BY cr.requested_at DESC
     FETCH FIRST 1 ROW ONLY
   </select>
 

@@ -43,6 +43,8 @@ public interface StudentCourseMapper {
   StudentCourseSummary findCourse(
       @Param("courseId") String courseId, @Param("division") String division);
 
+  Map<String, Object> findCourseDetailFields(@Param("courseId") String courseId);
+
   String findDescription(@Param("courseId") String courseId);
 
   String findSyllabusUrl(@Param("courseId") String courseId, @Param("division") String division);
@@ -60,6 +62,16 @@ public interface StudentCourseMapper {
       @Param("courseId") String courseId, @Param("division") String division);
 
   Long findSectionId(@Param("courseId") String courseId, @Param("division") String division);
+
+  Integer countCurrentEnrollment(
+      @Param("studentId") String studentId,
+      @Param("courseId") String courseId,
+      @Param("division") String division);
+
+  String findBorrowRequestStatus(
+      @Param("studentId") String studentId,
+      @Param("courseId") String courseId,
+      @Param("division") String division);
 
   void callInsertBorrowRequest(Map<String, Object> params);
 }

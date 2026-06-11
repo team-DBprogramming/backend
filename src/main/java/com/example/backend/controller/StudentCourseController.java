@@ -84,17 +84,18 @@ public class StudentCourseController {
   @GetMapping("/{courseId}")
   @Operation(summary = "강의 상세 조회", description = "강의 코드 기준으로 현재 학기 강의 상세 정보를 조회합니다.")
   public StudentApiResponse<StudentCourseDetailResponse> getCourse(
-      @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+      @Parameter(description = "강의 ID", example = "BUS2100") @PathVariable String courseId,
       @RequestParam(value = "division", required = false) String division) {
     return StudentApiResponse.success(
-        "S200", "강의 상세 조회 성공", courseService.getCourse(courseId, division));
+        "S200", "강의 상세 조회 성공", courseService.getCourse(userDetails.toAuthenticatedUser(), courseId, division));
   }
 
   @PostMapping("/{courseId}/borrow-request")
   @Operation(summary = "빌넣 신청", description = "정원이 찬 강의 또는 수강 희망 강의에 빌넣 요청을 등록합니다.")
   public StudentApiResponse<StudentMutationResponse> requestBorrow(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
-      @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
+      @Parameter(description = "강의 ID", example = "BUS2100") @PathVariable String courseId,
       @RequestBody StudentBorrowRequest request) {
     return StudentApiResponse.success(
         "S201",
@@ -107,7 +108,7 @@ public class StudentCourseController {
   @Operation(summary = "장바구니 추가", description = "강의를 현재 로그인한 학생의 장바구니에 추가합니다.")
   public StudentApiResponse<StudentMutationResponse> addCourseCart(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
-      @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
+      @Parameter(description = "강의 ID", example = "BUS2100") @PathVariable String courseId,
       @RequestParam(value = "division", required = false) String division) {
     return StudentApiResponse.success(
         "S201",
@@ -119,7 +120,7 @@ public class StudentCourseController {
   @Operation(summary = "장바구니 삭제", description = "강의를 현재 로그인한 학생의 장바구니에서 제거합니다.")
   public StudentApiResponse<StudentMutationResponse> deleteCourseCart(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
-      @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
+      @Parameter(description = "강의 ID", example = "BUS2100") @PathVariable String courseId,
       @RequestParam(value = "division", required = false) String division) {
     return StudentApiResponse.success(
         "S200",
