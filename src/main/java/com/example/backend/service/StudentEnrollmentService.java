@@ -1,5 +1,7 @@
 package com.example.backend.service;
 
+import com.example.backend.apiPayload.code.status.ErrorStatus;
+import com.example.backend.apiPayload.exception.handler.StudentHandler;
 import com.example.backend.dto.student.StudentCreditSummary;
 import com.example.backend.dto.student.StudentEnrolledCourse;
 import com.example.backend.dto.student.StudentEnrollmentRequest;
@@ -43,12 +45,17 @@ public class StudentEnrollmentService {
   public StudentMutationResponse enroll(AuthenticatedUser currentUser, StudentEnrollmentRequest request) {
     String studentId = currentUser.requireStudentId();
     Long sectionId = enrollmentMapper.findSectionId(request.courseId(), normalizeDivision(request.division()));
+    if (sectionId == null) {
+      throw new StudentHandler(ErrorStatus.STUDENT_COURSE_NOT_FOUND);
+    }
     Map<String, Object> params = new HashMap<>();
     params.put("studentId", studentId);
     params.put("courseId", request.courseId());
     params.put("sectionId", sectionId);
     enrollmentMapper.callInsertEnroll(params);
-    return new StudentMutationResponse(String.valueOf(sectionId), stringValue(params.get("result")));
+    return new StudentMutationResponse(
+        String.valueOf(sectionId),
+        toEnrollStatus(stringValue(params.get("result"))));
   }
 
   @Transactional
@@ -59,7 +66,9 @@ public class StudentEnrollmentService {
     params.put("courseId", courseId);
     params.put("sectionId", null);
     enrollmentMapper.callCancelEnroll(params);
-    return new StudentMutationResponse(courseId, stringValue(params.get("result")));
+    return new StudentMutationResponse(
+        courseId,
+        toCancelStatus(stringValue(params.get("result"))));
   }
 
   @Transactional(readOnly = true)
@@ -155,6 +164,20 @@ public class StudentEnrollmentService {
 
   private String stringValue(Object value) {
     return value == null ? null : String.valueOf(value);
+  }
+
+  private String toEnrollStatus(String result) {
+    if ("ENROLL_SUCCESS".equals(result)) {
+      return "ENROLLED";
+    }
+    return result == null ? "UNKNOWN" : result;
+  }
+
+  private String toCancelStatus(String result) {
+    if ("DELETE_SUCCESS".equals(result)) {
+      return "DROPPED";
+    }
+    return result == null ? "UNKNOWN" : result;
   }
 
   private String timestampDate(Object value) {
