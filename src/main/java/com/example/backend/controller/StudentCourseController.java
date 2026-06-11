@@ -41,15 +41,20 @@ public class StudentCourseController {
   @GetMapping
   @Operation(summary = "강의 목록 검색", description = "학기, 키워드, 분류, 전공, 유형, 요일, 시간, 학점 조건으로 강의를 검색합니다.")
   public StudentApiResponse<StudentCourseListResponse> getCourses(
-      @RequestParam("semester") String semester,
+      @RequestParam(value = "semester", required = false) String semester,
       @RequestParam(value = "keyword", required = false) String keyword,
       @RequestParam(value = "courseCategory", required = false) String courseCategory,
       @RequestParam(value = "major", required = false) String major,
+      @RequestParam(value = "courseMajor", required = false) String courseMajor,
       @RequestParam(value = "courseType", required = false) String courseType,
       @RequestParam(value = "day", required = false) List<String> day,
+      @RequestParam(value = "targetYear", required = false) Integer targetYear,
+      @RequestParam(value = "isEnglish", required = false) Boolean isEnglish,
       @RequestParam(value = "credit", required = false) List<Integer> credit,
       @RequestParam(value = "startTime", required = false) String startTime,
       @RequestParam(value = "endTime", required = false) String endTime,
+      @RequestParam(value = "hasSeatMargin", required = false) Boolean hasSeatMargin,
+      @RequestParam(value = "highReview", required = false) Boolean highReview,
       @RequestParam(value = "sort", required = false) String sort,
       @RequestParam(value = "page", required = false) Integer page,
       @RequestParam(value = "size", required = false) Integer size) {
@@ -57,7 +62,23 @@ public class StudentCourseController {
         "S200",
         "강의 목록 조회 성공",
         courseService.getCourses(
-            semester, keyword, courseCategory, major, courseType, day, credit, startTime, endTime, sort, page, size));
+            semester,
+            keyword,
+            courseCategory,
+            major,
+            courseMajor,
+            courseType,
+            day,
+            targetYear,
+            isEnglish,
+            credit,
+            startTime,
+            endTime,
+            hasSeatMargin,
+            highReview,
+            sort,
+            page,
+            size));
   }
 
   @GetMapping("/{courseId}")
@@ -81,28 +102,28 @@ public class StudentCourseController {
         courseService.requestBorrow(userDetails.toAuthenticatedUser(), courseId, request));
   }
 
-  @PostMapping({"/{courseId}/cart", "/{courseId}/scrap"})
+  @PostMapping("/{courseId}/cart")
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "강의 찜 추가", description = "강의를 현재 로그인한 학생의 장바구니에 추가합니다.")
+  @Operation(summary = "장바구니 추가", description = "강의를 현재 로그인한 학생의 장바구니에 추가합니다.")
   public StudentApiResponse<StudentMutationResponse> addCourseCart(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
       @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
       @RequestParam(value = "division", required = false) String division) {
     return StudentApiResponse.success(
         "S201",
-        "강의 찜 추가 성공",
+        "장바구니 추가 성공",
         cartService.addCart(userDetails.toAuthenticatedUser(), new StudentCartAddRequest(courseId, division)));
   }
 
-  @DeleteMapping({"/{courseId}/cart", "/{courseId}/scrap"})
-  @Operation(summary = "강의 찜 해제", description = "강의를 현재 로그인한 학생의 장바구니에서 제거합니다.")
+  @DeleteMapping("/{courseId}/cart")
+  @Operation(summary = "장바구니 삭제", description = "강의를 현재 로그인한 학생의 장바구니에서 제거합니다.")
   public StudentApiResponse<StudentMutationResponse> deleteCourseCart(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
       @Parameter(description = "강의 ID", example = "CSE301") @PathVariable String courseId,
       @RequestParam(value = "division", required = false) String division) {
     return StudentApiResponse.success(
         "S200",
-        "강의 찜 해제 성공",
+        "장바구니 삭제 성공",
         cartService.deleteCartByCourse(userDetails.toAuthenticatedUser(), courseId, division));
   }
 }

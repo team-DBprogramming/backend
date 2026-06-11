@@ -14,158 +14,133 @@
     <result property="schedule" column="schedule" />
     <result property="room" column="room" />
     <result property="seatStatus" column="seat_status" />
-    <result property="scrapped" column="scrapped" />
     <result property="conflictWith" column="conflict_with" />
     <result property="isApplicable" column="is_applicable" />
   </resultMap>
 
-  <select id="findStudentId" resultType="long">
-    SELECT student_id FROM student WHERE user_id = #{userId}
-  </select>
+  <resultMap id="BulkEnrollResultMap" type="java.util.HashMap">
+    <result property="cartItemId" column="cart_item_id" />
+    <result property="success" column="success" />
+    <result property="message" column="message" />
+    <result property="code" column="code" />
+  </resultMap>
+
+  <resultMap id="BulkEnrollSummaryMap" type="java.util.HashMap">
+    <result property="total" column="total" />
+    <result property="success" column="success" />
+    <result property="failed" column="failed" />
+  </resultMap>
 
   <select id="findSectionId" resultType="long">
-    SELECT cs.section_id
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE c.course_code = #{courseId}
-      AND sm.is_current = 1
-      AND cs.status != 'CANCELLED'
-      AND (#{division} IS NULL OR cs.section_no = #{division})
-    ORDER BY cs.section_no
+    SELECT c_no
+    FROM class
+    WHERE c_id = #{courseId}
+      AND c_status != 'CANCELLED'
+      AND (#{division} IS NULL OR TO_CHAR(c_no) = #{division})
+    ORDER BY c_no
     FETCH FIRST 1 ROW ONLY
   </select>
 
   <select id="findCartItems" resultMap="CartItemResultMap">
     SELECT
       ci.cart_id AS cart_item_id,
-      c.course_code AS course_id,
-      c.course_name,
-      p.name AS professor,
-      cs.section_no || '분반' AS division,
-      c.credits AS credit,
-      (
-        SELECT LISTAGG(ss.day_of_week || ' ' || ss.start_time || '-' || ss.end_time, ', ')
-          WITHIN GROUP (ORDER BY ss.day_of_week, ss.start_time)
-        FROM section_schedule ss
-        WHERE ss.section_id = cs.section_id
-      ) AS schedule,
-      (
-        SELECT LISTAGG(cr.building || ' ' || cr.room_no, ', ')
-          WITHIN GROUP (ORDER BY cr.building || ' ' || cr.room_no)
-        FROM section_schedule ss
-        JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-        WHERE ss.section_id = cs.section_id
-      ) AS room,
+      ci.c_id AS course_id,
+      l.subject AS course_name,
+      COALESCE(p.p_name, l.prof) AS professor,
+      TO_CHAR(ci.c_no) || '분반' AS division,
+      l.credit,
+      LISTAGG(ct.c_day || ' ' || ct.c_start || '-' || ct.c_end, ', ')
+        WITHIN GROUP (
+          ORDER BY
+            CASE ct.c_day
+              WHEN 'MON' THEN 1
+              WHEN 'TUE' THEN 2
+              WHEN 'WED' THEN 3
+              WHEN 'THU' THEN 4
+              WHEN 'FRI' THEN 5
+              WHEN 'SAT' THEN 6
+              ELSE 7
+            END,
+            ct.c_start
+        ) AS schedule,
+      c.c_where AS room,
       CASE
-        WHEN COALESCE(cs.enrolled_count, 0) <![CDATA[>=]]> cs.capacity THEN 'FULL'
-        WHEN cs.capacity - COALESCE(cs.enrolled_count, 0) <![CDATA[<=]]> 5 THEN 'CLOSING_SOON'
+        WHEN c.c_now >= c.c_max THEN 'FULL'
+        WHEN c.c_max - c.c_now <![CDATA[<=]]> 5 THEN 'CLOSING_SOON'
         ELSE 'AVAILABLE'
       END AS seat_status,
-      (
-        SELECT COUNT(*)
-        FROM cart_item ci2
-        WHERE ci2.section_id = cs.section_id
-      ) AS scrapped,
       NULL AS conflict_with,
-      CASE WHEN COALESCE(cs.enrolled_count, 0) <![CDATA[<]]> cs.capacity THEN 1 ELSE 0 END AS is_applicable
+      CASE WHEN c.c_now <![CDATA[<]]> c.c_max THEN 1 ELSE 0 END AS is_applicable
     FROM cart_item ci
-    JOIN course_section cs ON cs.section_id = ci.section_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    WHERE ci.student_id = #{studentId}
-      AND sm.is_current = 1
+    JOIN class c ON c.c_id = ci.c_id AND c.c_no = ci.c_no
+    JOIN lecture l ON l.no = c.c_id
+    LEFT JOIN professor p ON p.p_id = COALESCE(c.p_id, l.p_id)
+    LEFT JOIN class_time ct ON ct.c_id = c.c_id AND ct.c_no = c.c_no
+    WHERE ci.s_id = #{studentId}
+    GROUP BY
+      ci.cart_id,
+      ci.c_id,
+      l.subject,
+      COALESCE(p.p_name, l.prof),
+      ci.c_no,
+      l.credit,
+      c.c_where,
+      c.c_now,
+      c.c_max,
+      ci.added_at
     ORDER BY ci.added_at DESC
   </select>
 
-  <insert id="insertCart">
-    MERGE INTO cart_item ci
-    USING (
-      SELECT #{studentId} AS student_id, #{sectionId} AS section_id
-      FROM dual
-    ) src
-    ON (ci.student_id = src.student_id AND ci.section_id = src.section_id)
-    WHEN NOT MATCHED THEN
-      INSERT (student_id, section_id, added_at)
-      VALUES (src.student_id, src.section_id, SYSTIMESTAMP)
-  </insert>
+  <select id="callInsertCart" statementType="CALLABLE" parameterType="map">
+    { CALL INSERT_CART(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{courseId, mode=IN, jdbcType=VARCHAR},
+      #{sectionId, mode=IN, jdbcType=NUMERIC},
+      #{result, mode=OUT, jdbcType=VARCHAR}
+    ) }
+  </select>
+
+  <select id="callDeleteCart" statementType="CALLABLE" parameterType="map">
+    { CALL DELETE_CART(
+      #{cartItemId, mode=IN, jdbcType=NUMERIC},
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{result, mode=OUT, jdbcType=VARCHAR}
+    ) }
+  </select>
+
+  <select id="callDeleteCartBySection" statementType="CALLABLE" parameterType="map">
+    { CALL DELETE_CART_BY_SECTION(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{courseId, mode=IN, jdbcType=VARCHAR},
+      #{sectionId, mode=IN, jdbcType=NUMERIC},
+      #{result, mode=OUT, jdbcType=VARCHAR}
+    ) }
+  </select>
+
+  <select id="callCountCart" statementType="CALLABLE" parameterType="map">
+    { CALL COUNT_CART(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{count, mode=OUT, jdbcType=NUMERIC}
+    ) }
+  </select>
+
+  <select id="callEnrollFromCart" statementType="CALLABLE" parameterType="map">
+    { CALL ENROLL_FROM_CART(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{cartItemIdsCsv, mode=IN, jdbcType=VARCHAR},
+      #{results, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.StudentCartMapper.BulkEnrollResultMap},
+      #{summary, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.StudentCartMapper.BulkEnrollSummaryMap}
+    ) }
+  </select>
 
   <select id="findCartId" resultType="long">
     SELECT cart_id
     FROM cart_item
-    WHERE student_id = #{studentId}
-      AND section_id = #{sectionId}
+    WHERE s_id = #{studentId}
+      AND c_id = #{courseId}
+      AND c_no = #{sectionId}
+    ORDER BY added_at DESC
+    FETCH FIRST 1 ROW ONLY
   </select>
 
-  <delete id="deleteCart">
-    DELETE FROM cart_item
-    WHERE cart_id = #{cartItemId}
-      AND student_id = #{studentId}
-  </delete>
-
-  <delete id="deleteCartBySection">
-    DELETE FROM cart_item
-    WHERE student_id = #{studentId}
-      AND section_id = #{sectionId}
-  </delete>
-
-  <select id="countCart" resultType="int">
-    SELECT COUNT(*)
-    FROM cart_item
-    WHERE student_id = #{studentId}
-  </select>
-
-  <select id="countSelectedCart" resultType="int">
-    SELECT COUNT(*)
-    FROM cart_item
-    WHERE student_id = #{studentId}
-      AND cart_id IN
-      <foreach collection="cartItemIds" item="cartItemId" open="(" separator="," close=")">
-        #{cartItemId}
-      </foreach>
-  </select>
-
-  <insert id="insertEnrollmentsFromCart">
-    INSERT INTO enrollment (student_id, section_id, status, enrolled_at)
-    SELECT ci.student_id, ci.section_id, 'ENROLLED', SYSTIMESTAMP
-    FROM cart_item ci
-    JOIN course_section cs ON cs.section_id = ci.section_id
-    WHERE ci.student_id = #{studentId}
-      <if test="cartItemIds != null and cartItemIds.size() > 0">
-        AND ci.cart_id IN
-        <foreach collection="cartItemIds" item="cartItemId" open="(" separator="," close=")">
-          #{cartItemId}
-        </foreach>
-      </if>
-      AND cs.enrolled_count <![CDATA[<]]> cs.capacity
-      AND NOT EXISTS (
-        SELECT 1
-        FROM enrollment e
-        WHERE e.student_id = ci.student_id
-          AND e.section_id = ci.section_id
-          AND e.status = 'ENROLLED'
-      )
-  </insert>
-
-  <update id="updateEnrolledCountsFromCart">
-    UPDATE course_section cs
-    SET enrolled_count = (
-      SELECT COUNT(*)
-      FROM enrollment e
-      WHERE e.section_id = cs.section_id
-        AND e.status = 'ENROLLED'
-    )
-    WHERE cs.section_id IN (
-      SELECT section_id
-      FROM cart_item
-      WHERE student_id = #{studentId}
-        <if test="cartItemIds != null and cartItemIds.size() > 0">
-          AND cart_id IN
-          <foreach collection="cartItemIds" item="cartItemId" open="(" separator="," close=")">
-            #{cartItemId}
-          </foreach>
-        </if>
-    )
-  </update>
 </mapper>

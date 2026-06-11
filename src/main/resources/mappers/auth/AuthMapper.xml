@@ -9,6 +9,7 @@
     <result property="loginId" column="login_id" />
     <result property="role" column="role" />
     <result property="phone" column="phone" />
+    <result property="passwordHash" column="password_hash" />
     <result property="active" column="is_active" />
     <result property="name" column="user_name" />
     <result property="department" column="department" />
@@ -20,13 +21,13 @@
       ua.login_id,
       ua.role,
       ua.phone,
+      ua.password_hash,
       ua.is_active,
-      COALESCE(s.name, p.name) AS user_name,
-      d.dept_code AS department
+      COALESCE(s.s_name, p.p_name) AS user_name,
+      COALESCE(s.s_major, p.p_major) AS department
     FROM user_account ua
-    LEFT JOIN student s ON s.user_id = ua.user_id
-    LEFT JOIN professor p ON p.user_id = ua.user_id
-    LEFT JOIN department d ON d.dept_id = COALESCE(s.dept_id, p.dept_id)
+    LEFT JOIN student s ON s.s_id = ua.login_id AND ua.role = 'STUDENT'
+    LEFT JOIN professor p ON p.p_id = ua.login_id AND ua.role = 'PROFESSOR'
     WHERE ua.login_id = #{loginId}
   </select>
 

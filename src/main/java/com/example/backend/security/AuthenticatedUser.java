@@ -34,4 +34,11 @@ public record AuthenticatedUser(Long userId, String loginId, String role) {
     }
     return userId;
   }
+
+  public String requireStudentId() {
+    if (!"STUDENT".equals(role)) {
+      throw new StudentHandler(ErrorStatus.STUDENT_FORBIDDEN);
+    }
+    return loginId;
+  }
 }

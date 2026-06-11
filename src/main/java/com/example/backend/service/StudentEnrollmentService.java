@@ -12,10 +12,14 @@ import com.example.backend.dto.student.StudentTimetableItem;
 import com.example.backend.dto.student.StudentTimetableResponse;
 import com.example.backend.mapper.StudentEnrollmentMapper;
 import com.example.backend.security.AuthenticatedUser;
+import com.example.backend.utils.SemesterUtils;
+import com.example.backend.utils.SemesterUtils.Semester;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,27 +41,33 @@ public class StudentEnrollmentService {
 
   @Transactional
   public StudentMutationResponse enroll(AuthenticatedUser currentUser, StudentEnrollmentRequest request) {
-    Long studentId = enrollmentMapper.findStudentId(currentUser.requireStudentUserId());
+    String studentId = currentUser.requireStudentId();
     Long sectionId = enrollmentMapper.findSectionId(request.courseId(), normalizeDivision(request.division()));
-    enrollmentMapper.insertEnrollment(studentId, sectionId);
-    enrollmentMapper.increaseEnrolledCount(sectionId);
-    return new StudentMutationResponse(String.valueOf(sectionId), "ENROLLED");
+    Map<String, Object> params = new HashMap<>();
+    params.put("studentId", studentId);
+    params.put("courseId", request.courseId());
+    params.put("sectionId", sectionId);
+    enrollmentMapper.callInsertEnroll(params);
+    return new StudentMutationResponse(String.valueOf(sectionId), stringValue(params.get("result")));
   }
 
   @Transactional
   public StudentMutationResponse cancel(AuthenticatedUser currentUser, String courseId) {
-    Long studentId = enrollmentMapper.findStudentId(currentUser.requireStudentUserId());
-    enrollmentMapper.decreaseEnrolledCount(studentId, courseId);
-    enrollmentMapper.cancelEnrollment(studentId, courseId);
-    return new StudentMutationResponse(courseId, "DROPPED");
+    String studentId = currentUser.requireStudentId();
+    Map<String, Object> params = new HashMap<>();
+    params.put("studentId", studentId);
+    params.put("courseId", courseId);
+    params.put("sectionId", null);
+    enrollmentMapper.callCancelEnroll(params);
+    return new StudentMutationResponse(courseId, stringValue(params.get("result")));
   }
 
   @Transactional(readOnly = true)
   public StudentEnrollmentStatusResponse getStatus(AuthenticatedUser currentUser) {
-    Long userId = currentUser.requireStudentUserId();
-    StudentEnrollmentStatus status = enrollmentMapper.findEnrollmentStatus(userId);
-    StudentCreditSummary summary = nullToEmptySummary(enrollmentMapper.findCreditSummary(userId, MAX_CREDITS));
-    List<StudentEnrolledCourse> courses = enrollmentMapper.findEnrolledCourses(userId);
+    String studentId = currentUser.requireStudentId();
+    StudentEnrollmentStatus status = getEnrollmentStatus();
+    StudentCreditSummary summary = nullToEmptySummary(getCreditSummary(studentId));
+    List<StudentEnrolledCourse> courses = getEnrolledCourses(studentId);
     return new StudentEnrollmentStatusResponse(
         status == null ? "CLOSED" : status.getStatus(),
         intValue(summary.getCourseCount()),
@@ -68,12 +78,12 @@ public class StudentEnrollmentService {
 
   @Transactional(readOnly = true)
   public StudentEnrollmentSummaryResponse getSummary(AuthenticatedUser currentUser) {
-    Long userId = currentUser.requireStudentUserId();
-    StudentCreditSummary summary = enrollmentMapper.findCreditSummary(userId, MAX_CREDITS);
+    String studentId = currentUser.requireStudentId();
+    StudentCreditSummary summary = getCreditSummary(studentId);
     int applied = summary == null || summary.getApplied() == null ? 0 : summary.getApplied();
     int max = summary == null || summary.getMax() == null ? MAX_CREDITS : summary.getMax();
     int courseCount = summary == null || summary.getCourseCount() == null ? 0 : summary.getCourseCount();
-    StudentEnrollmentStatus status = enrollmentMapper.findEnrollmentStatus(userId);
+    StudentEnrollmentStatus status = getEnrollmentStatus();
     OffsetDateTime now = OffsetDateTime.now(clock.withZone(ZoneOffset.UTC));
     return new StudentEnrollmentSummaryResponse(
         new StudentEnrollmentSummaryResponse.EnrollmentStatus(
@@ -89,8 +99,11 @@ public class StudentEnrollmentService {
 
   @Transactional(readOnly = true)
   public StudentTimetableResponse getPreview(AuthenticatedUser currentUser) {
-    Long userId = currentUser.requireStudentUserId();
-    return toTimetableResponse(enrollmentMapper.findEnrollmentTimetable(userId));
+    String studentId = currentUser.requireStudentId();
+    Semester currentSemester = SemesterUtils.current(LocalDate.now(clock));
+    return toTimetableResponse(
+        SemesterUtils.format(currentSemester),
+        getEnrollmentTimetable(studentId));
   }
 
   private String normalizeDivision(String division) {
@@ -101,11 +114,72 @@ public class StudentEnrollmentService {
     return summary == null ? new StudentCreditSummary(0, MAX_CREDITS, 0, 0) : summary;
   }
 
+  private StudentEnrollmentStatus getEnrollmentStatus() {
+    Map<String, Object> params = new HashMap<>();
+    enrollmentMapper.callGetEnrollStatus(params);
+    return new StudentEnrollmentStatus(
+        stringValue(params.get("status")),
+        timestampDate(params.get("deadline")),
+        intValue(params.get("daysLeft")));
+  }
+
+  private StudentCreditSummary getCreditSummary(String studentId) {
+    Map<String, Object> params = new HashMap<>();
+    params.put("studentId", studentId);
+    enrollmentMapper.callGetCreditSummary(params);
+    return new StudentCreditSummary(
+        intValue(params.get("applied")),
+        intValue(params.get("max")),
+        intValue(params.get("courseCount")),
+        intValue(params.get("cartCount")));
+  }
+
+  private List<StudentEnrolledCourse> getEnrolledCourses(String studentId) {
+    Map<String, Object> params = new HashMap<>();
+    params.put("studentId", studentId);
+    enrollmentMapper.callGetEnrolledCourses(params);
+    return listValue(params.get("courses"));
+  }
+
+  private List<StudentTimetableItem> getEnrollmentTimetable(String studentId) {
+    Map<String, Object> params = new HashMap<>();
+    params.put("studentId", studentId);
+    enrollmentMapper.callGetEnrollmentTimetable(params);
+    return listValue(params.get("rows"));
+  }
+
+  @SuppressWarnings("unchecked")
+  private <T> List<T> listValue(Object value) {
+    return value instanceof List<?> list ? (List<T>) list : List.of();
+  }
+
+  private String stringValue(Object value) {
+    return value == null ? null : String.valueOf(value);
+  }
+
+  private String timestampDate(Object value) {
+    if (value == null) {
+      return null;
+    }
+    String text = String.valueOf(value);
+    return text.length() >= 10 ? text.substring(0, 10) : text;
+  }
+
   private int intValue(Integer value) {
     return value == null ? 0 : value;
   }
 
-  private StudentTimetableResponse toTimetableResponse(List<StudentTimetableItem> rows) {
+  private int intValue(Object value) {
+    if (value == null) {
+      return 0;
+    }
+    if (value instanceof Number number) {
+      return number.intValue();
+    }
+    return Integer.parseInt(String.valueOf(value));
+  }
+
+  private StudentTimetableResponse toTimetableResponse(String semester, List<StudentTimetableItem> rows) {
     Map<String, CourseBuilder> grouped = new LinkedHashMap<>();
     for (StudentTimetableItem row : rows) {
       grouped
@@ -140,7 +214,7 @@ public class StudentEnrollmentService {
             .filter(credit -> credit != null)
             .mapToInt(Integer::intValue)
             .sum();
-    return new StudentTimetableResponse(null, courses, totalCredit, null);
+    return new StudentTimetableResponse(semester, courses, totalCredit, null);
   }
 
   private record CourseBuilder(

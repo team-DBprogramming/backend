@@ -10,7 +10,9 @@ import com.example.backend.dto.student.StudentLectureTime;
 import com.example.backend.dto.student.StudentMutationResponse;
 import com.example.backend.mapper.StudentCourseMapper;
 import com.example.backend.security.AuthenticatedUser;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,42 +31,51 @@ public class StudentCourseService {
       String keyword,
       String courseCategory,
       String major,
+      String courseMajor,
       String courseType,
       List<String> days,
+      Integer targetYear,
+      Boolean isEnglish,
       List<Integer> credits,
       String startTime,
       String endTime,
+      Boolean hasSeatMargin,
+      Boolean highReview,
       String sort,
       Integer page,
       Integer size) {
     int normalizedPage = page == null || page < 1 ? 1 : page;
     int normalizedSize = size == null || size < 1 ? 20 : size;
     int offset = (normalizedPage - 1) * normalizedSize;
-    String normalizedSemester = normalizeSemester(semester);
     List<String> normalizedDays = normalizeStrings(days);
     List<Integer> normalizedCredits = normalizeIntegers(credits);
+    String normalizedMajor = normalize(firstNonBlank(courseMajor, firstNonBlank(major, courseCategory)));
     Integer total =
         courseMapper.countCourses(
-            normalizedSemester,
             normalize(keyword),
-            normalize(courseCategory),
-            normalize(major),
+            normalizedMajor,
             normalize(courseType),
             normalizedDays,
-            normalizedCredits,
-            normalize(startTime),
-            normalize(endTime));
-    List<StudentCourseSummary> courses =
-        courseMapper.findCourses(
-            normalizedSemester,
-            normalize(keyword),
-            normalize(courseCategory),
-            normalize(major),
-            normalize(courseType),
-            normalizedDays,
+            targetYear,
+            isEnglish,
             normalizedCredits,
             normalize(startTime),
             normalize(endTime),
+            hasSeatMargin,
+            highReview);
+    List<StudentCourseSummary> courses =
+        courseMapper.findCourses(
+            normalize(keyword),
+            normalizedMajor,
+            normalize(courseType),
+            normalizedDays,
+            targetYear,
+            isEnglish,
+            normalizedCredits,
+            normalize(startTime),
+            normalize(endTime),
+            hasSeatMargin,
+            highReview,
             normalize(sort),
             offset,
             normalizedSize);
@@ -124,12 +135,15 @@ public class StudentCourseService {
   @Transactional
   public StudentMutationResponse requestBorrow(
       AuthenticatedUser currentUser, String courseId, StudentBorrowRequest request) {
-    Long userId = currentUser.requireStudentUserId();
-    Long studentId = courseMapper.findStudentId(userId);
+    String studentId = currentUser.requireStudentId();
     Long sectionId = courseMapper.findSectionId(courseId, normalizeDivision(request.division()));
-    courseMapper.insertBorrowRequest(studentId, sectionId, valueOrDefault(request.reason(), "수강을 희망합니다."));
-    Long requestId = courseMapper.findLatestBorrowRequestId(studentId, sectionId);
-    return new StudentMutationResponse(String.valueOf(requestId), "PENDING");
+    Map<String, Object> params = new HashMap<>();
+    params.put("studentId", studentId);
+    params.put("courseId", courseId);
+    params.put("sectionId", sectionId);
+    params.put("reason", valueOrDefault(request.reason(), "수강을 희망합니다."));
+    courseMapper.callInsertBorrowRequest(params);
+    return new StudentMutationResponse(String.valueOf(params.get("requestId")), String.valueOf(params.get("result")));
   }
 
   private String normalizeDivision(String division) {
@@ -140,17 +154,12 @@ public class StudentCourseService {
     return isBlank(value) ? null : value.trim();
   }
 
-  private String normalizeSemester(String value) {
-    String normalized = normalize(value);
-    if (normalized == null) {
-      return null;
-    }
-    normalized = normalized.replaceAll("\\s*-\\s*", "-");
-    return normalized.endsWith("학기") ? normalized : normalized + "학기";
-  }
-
   private String valueOrDefault(String value, String defaultValue) {
     return isBlank(value) ? defaultValue : value.trim();
+  }
+
+  private String firstNonBlank(String first, String second) {
+    return isBlank(first) ? second : first;
   }
 
   private List<StudentLectureTime> toLectureTimes(List<StudentCourseSchedule> schedules) {
