@@ -9,6 +9,18 @@ begin
              'TRIGGER' type
         from dual
       union all
+      select 'AUTHENTICATE_LOGIN',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'SAVE_LOGIN_SUCCESS',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'V_AUTH_USER',
+             'VIEW'
+        from dual
+      union all
       select 'INSERTENROLLCHECKED',
              'PROCEDURE'
         from dual
@@ -45,7 +57,8 @@ begin
       exception
          when others then
             if sqlcode not in ( - 4043,
-                                - 4080 ) then
+                                - 4080,
+                                - 942 ) then
                raise;
             end if;
       end;
@@ -483,6 +496,9 @@ create table refresh_token (
    created_at  timestamp default current_timestamp,
    constraint pk_refresh_token primary key ( token_id ),
    constraint uk_refresh_token_hash unique ( token_hash ),
+   constraint fk_refresh_token_user_account foreign key ( login_id )
+      references user_account ( login_id )
+         on delete cascade,
    constraint chk_refresh_login_type check ( login_type in ( 'STUDENT',
                                                              'PROFESSOR' ) ),
    constraint chk_refresh_remember check ( remember_me in ( 0,
@@ -496,6 +512,152 @@ create index idx_refresh_token_login_active on
       revoked_at,
       expires_at
    );
+
+CREATE OR REPLACE VIEW V_AUTH_USER AS
+SELECT
+   ua.user_id,
+   ua.login_id,
+   ua.role,
+   LOWER(ua.role) AS role_display,
+   ua.phone,
+   ua.password_hash,
+   ua.is_active,
+   COALESCE(s.s_name, p.p_name) AS user_name,
+   COALESCE(s.s_major, p.p_major) AS department,
+   'u_' || TO_CHAR(ua.user_id) AS public_user_id
+FROM user_account ua
+LEFT JOIN student s
+   ON s.s_id = ua.login_id
+  AND ua.role = 'STUDENT'
+LEFT JOIN professor p
+   ON p.p_id = ua.login_id
+  AND ua.role = 'PROFESSOR';
+/
+
+CREATE OR REPLACE PROCEDURE AUTHENTICATE_LOGIN(
+   p_login_id         IN user_account.login_id%TYPE,
+   p_password         IN user_account.password_hash%TYPE,
+   p_result           OUT varchar2,
+   p_user_id          OUT user_account.user_id%TYPE,
+   p_account_login_id OUT user_account.login_id%TYPE,
+   p_role             OUT user_account.role%TYPE,
+   p_role_display     OUT varchar2,
+   p_public_user_id   OUT varchar2,
+   p_user_name        OUT varchar2,
+   p_department       OUT varchar2
+)
+IS
+   v_user     V_AUTH_USER%ROWTYPE;
+   v_password user_account.password_hash%TYPE;
+   v_digits   varchar2(30);
+BEGIN
+   p_result := 'INVALID_CREDENTIALS';
+   p_user_id := NULL;
+   p_account_login_id := NULL;
+   p_role := NULL;
+   p_role_display := NULL;
+   p_public_user_id := NULL;
+   p_user_name := NULL;
+   p_department := NULL;
+
+   IF p_login_id IS NULL
+      OR TRIM(p_login_id) IS NULL
+      OR p_password IS NULL
+      OR TRIM(p_password) IS NULL THEN
+      p_result := 'MISSING_CREDENTIALS';
+      RETURN;
+   END IF;
+
+   SELECT *
+     INTO v_user
+     FROM V_AUTH_USER
+    WHERE login_id = TRIM(p_login_id);
+
+   IF NVL(v_user.is_active, 0) != 1 THEN
+      p_result := 'INVALID_CREDENTIALS';
+      RETURN;
+   END IF;
+
+   IF v_user.role NOT IN ( 'STUDENT', 'PROFESSOR' ) THEN
+      p_result := 'MISSING_ROLE';
+      RETURN;
+   END IF;
+
+   v_password := TRIM(p_password);
+   v_digits := REGEXP_REPLACE(NVL(v_user.phone, ''), '[^0-9]', '');
+
+   IF NVL(TRIM(v_user.password_hash), '') = v_password
+      OR ( LENGTH(v_digits) >= 4
+           AND SUBSTR(v_digits, -4) = v_password ) THEN
+      p_result := 'LOGIN_SUCCESS';
+      p_user_id := v_user.user_id;
+      p_account_login_id := v_user.login_id;
+      p_role := v_user.role;
+      p_role_display := v_user.role_display;
+      p_public_user_id := v_user.public_user_id;
+      p_user_name := v_user.user_name;
+      p_department := v_user.department;
+      RETURN;
+   END IF;
+
+   p_result := 'INVALID_CREDENTIALS';
+EXCEPTION
+   WHEN NO_DATA_FOUND THEN
+      p_result := 'INVALID_CREDENTIALS';
+   WHEN TOO_MANY_ROWS THEN
+      p_result := 'INVALID_CREDENTIALS';
+   WHEN OTHERS THEN
+      p_result := 'AUTH_ERROR';
+END;
+/
+
+CREATE OR REPLACE PROCEDURE SAVE_LOGIN_SUCCESS(
+   p_user_id     IN user_account.user_id%TYPE,
+   p_token_hash  IN refresh_token.token_hash%TYPE,
+   p_remember_me IN refresh_token.remember_me%TYPE,
+   p_expires_at  IN refresh_token.expires_at%TYPE,
+   p_result      OUT varchar2
+)
+IS
+   v_user user_account%ROWTYPE;
+BEGIN
+   p_result := 'SAVE_FAILED';
+
+   SELECT *
+     INTO v_user
+     FROM user_account
+    WHERE user_id = p_user_id
+      AND role IN ( 'STUDENT', 'PROFESSOR' )
+      AND is_active = 1;
+
+   INSERT INTO refresh_token (
+      login_id,
+      login_type,
+      token_hash,
+      remember_me,
+      expires_at
+   ) VALUES (
+      v_user.login_id,
+      v_user.role,
+      p_token_hash,
+      NVL(p_remember_me, 0),
+      p_expires_at
+   );
+
+   UPDATE user_account
+      SET last_login_at = CAST(SYSTIMESTAMP AS TIMESTAMP)
+    WHERE user_id = v_user.user_id;
+
+   p_result := 'SAVE_SUCCESS';
+EXCEPTION
+   WHEN NO_DATA_FOUND THEN
+      p_result := 'USER_NOT_FOUND';
+   WHEN DUP_VAL_ON_INDEX THEN
+      p_result := 'DUPLICATE_TOKEN';
+   WHEN OTHERS THEN
+      p_result := 'SAVE_FAILED';
+END;
+/
 
 SET SERVEROUTPUT ON;
 

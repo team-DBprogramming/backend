@@ -108,7 +108,7 @@ class AuthServiceTest {
   void logoutRevokesRefreshToken() {
     TokenPair tokens = tokenProvider.createTokenPair(1L, "2024123456", "STUDENT", false);
     String refreshTokenHash = tokenProvider.hashToken(tokens.refreshToken());
-    refreshTokenMapper.insert(1L, refreshTokenHash, 0, tokens.refreshTokenExpiresAt());
+    refreshTokenMapper.saveActiveToken(refreshTokenHash, tokens.refreshTokenExpiresAt());
 
     authService.logout(studentUser(), new LogoutRequest(tokens.refreshToken()));
 
@@ -129,8 +129,8 @@ class AuthServiceTest {
   @Test
   void reissueAccessTokenCreatesNewAccessTokenFromActiveRefreshToken() {
     TokenPair tokens = tokenProvider.createTokenPair(1L, "2024123456", "STUDENT", false);
-    refreshTokenMapper.insert(
-        1L, tokenProvider.hashToken(tokens.refreshToken()), 0, tokens.refreshTokenExpiresAt());
+    refreshTokenMapper.saveActiveToken(
+        tokenProvider.hashToken(tokens.refreshToken()), tokens.refreshTokenExpiresAt());
 
     AccessTokenResponse response = authService.reissueAccessToken(new LogoutRequest(tokens.refreshToken()));
 
@@ -157,12 +157,43 @@ class AuthServiceTest {
     }
 
     @Override
-    public AuthUser findByLoginId(String loginId) {
-      return users.get(loginId);
+    public void callAuthenticateLogin(Map<String, Object> params) {
+      String loginId = (String) params.get("loginId");
+      String password = (String) params.get("password");
+      AuthUser user = users.get(loginId);
+      if (user == null || !user.isActive()) {
+        params.put("result", "INVALID_CREDENTIALS");
+        return;
+      }
+      if (!"STUDENT".equals(user.role()) && !"PROFESSOR".equals(user.role())) {
+        params.put("result", "MISSING_ROLE");
+        return;
+      }
+      if (!matchesPassword(password, user)) {
+        params.put("result", "INVALID_CREDENTIALS");
+        return;
+      }
+      params.put("result", "LOGIN_SUCCESS");
+      params.put("userId", user.userId());
+      params.put("accountLoginId", user.loginId());
+      params.put("role", user.role());
+      params.put("roleDisplay", user.role().toLowerCase(java.util.Locale.ROOT));
+      params.put("publicUserId", "u_" + user.userId());
+      params.put("userName", user.name());
+      params.put("department", user.department());
     }
 
-    @Override
-    public void updateLastLoginAt(Long userId, Instant lastLoginAt) {}
+    private boolean matchesPassword(String password, AuthUser user) {
+      if (password == null) {
+        return false;
+      }
+      if (user.passwordHash() != null && !user.passwordHash().trim().isEmpty()
+          && user.passwordHash().equals(password.trim())) {
+        return true;
+      }
+      String digits = user.phone() == null ? "" : user.phone().replaceAll("[^0-9]", "");
+      return digits.length() >= 4 && digits.substring(digits.length() - 4).equals(password.trim());
+    }
   }
 
   private static class FakeRefreshTokenMapper implements RefreshTokenMapper {
@@ -171,11 +202,16 @@ class AuthServiceTest {
     private Instant lastExpiresAt;
     private String revokedTokenHash;
 
-    @Override
-    public void insert(Long userId, String tokenHash, int rememberMe, Instant expiresAt) {
-      lastRememberMe = rememberMe;
-      lastExpiresAt = expiresAt;
+    void saveActiveToken(String tokenHash, Instant expiresAt) {
       activeTokens.put(tokenHash, expiresAt);
+    }
+
+    @Override
+    public void callSaveLoginSuccess(Map<String, Object> params) {
+      lastRememberMe = ((Number) params.get("rememberMe")).intValue();
+      lastExpiresAt = (Instant) params.get("expiresAt");
+      activeTokens.put((String) params.get("tokenHash"), lastExpiresAt);
+      params.put("result", "SAVE_SUCCESS");
     }
 
     @Override

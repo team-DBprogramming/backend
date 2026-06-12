@@ -7,7 +7,6 @@ import com.example.backend.dto.auth.LoginRequest;
 import com.example.backend.dto.auth.LoginResponse;
 import com.example.backend.dto.auth.LoginResponse.UserSummary;
 import com.example.backend.dto.auth.LogoutRequest;
-import com.example.backend.dto.auth.AuthUser;
 import com.example.backend.mapper.AuthMapper;
 import com.example.backend.mapper.RefreshTokenMapper;
 import com.example.backend.security.AuthenticatedUser;
@@ -17,7 +16,8 @@ import com.example.backend.utils.TokenClaims;
 import com.example.backend.utils.TokenPair;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,27 +46,24 @@ public class AuthService {
       throw new AuthHandler(ErrorStatus.AUTH_MISSING_CREDENTIALS);
     }
 
-    AuthUser user = authMapper.findByLoginId(request.userId().trim());
-    if (user == null || !user.isActive()) {
-      throw new AuthHandler(ErrorStatus.AUTH_INVALID_CREDENTIALS);
-    }
-
-    if (!isStudentOrProfessor(user.role())) {
-      throw new AuthHandler(ErrorStatus.AUTH_MISSING_ROLE);
-    }
-
-    if (!matchesPassword(request.password(), user)) {
-      throw new AuthHandler(ErrorStatus.AUTH_INVALID_CREDENTIALS);
-    }
+    Map<String, Object> authParams = new HashMap<>();
+    authParams.put("loginId", request.userId().trim());
+    authParams.put("password", request.password().trim());
+    authMapper.callAuthenticateLogin(authParams);
+    ensureLoginSuccess(authParams);
 
     boolean rememberMe = request.rememberMeOrFalse();
-    TokenPair tokens = tokenProvider.createTokenPair(user.userId(), user.loginId(), user.role(), rememberMe);
-    refreshTokenMapper.insert(
-        user.userId(),
-        tokenProvider.hashToken(tokens.refreshToken()),
-        rememberMe ? 1 : 0,
-        tokens.refreshTokenExpiresAt());
-    authMapper.updateLastLoginAt(user.userId(), clock.instant());
+    Long userId = longValue(authParams.get("userId"));
+    String loginId = stringValue(authParams.get("accountLoginId"));
+    String role = stringValue(authParams.get("role"));
+    TokenPair tokens = tokenProvider.createTokenPair(userId, loginId, role, rememberMe);
+    Map<String, Object> saveParams = new HashMap<>();
+    saveParams.put("userId", userId);
+    saveParams.put("tokenHash", tokenProvider.hashToken(tokens.refreshToken()));
+    saveParams.put("rememberMe", rememberMe ? 1 : 0);
+    saveParams.put("expiresAt", tokens.refreshTokenExpiresAt());
+    refreshTokenMapper.callSaveLoginSuccess(saveParams);
+    ensureSaveSuccess(saveParams);
 
     return new LoginResponse(
         tokens.accessToken(),
@@ -74,11 +71,11 @@ public class AuthService {
         tokens.accessTokenExpiresAt(),
         tokens.refreshTokenExpiresAt(),
         new UserSummary(
-            "u_" + user.userId(),
-            user.loginId(),
-            user.name(),
-            user.role().toLowerCase(Locale.ROOT),
-            user.department()));
+            stringValue(authParams.get("publicUserId")),
+            loginId,
+            stringValue(authParams.get("userName")),
+            stringValue(authParams.get("roleDisplay")),
+            stringValue(authParams.get("department"))));
   }
 
   @Transactional
@@ -117,26 +114,38 @@ public class AuthService {
     return new AccessTokenResponse(accessToken.token(), accessToken.expiresAt());
   }
 
-  private boolean matchesPhoneLastFourDigits(String password, String phone) {
-    String digits = phone == null ? "" : phone.replaceAll("[^0-9]", "");
-    return digits.length() >= 4 && digits.substring(digits.length() - 4).equals(password.trim());
-  }
-
-  private boolean matchesPassword(String password, AuthUser user) {
-    if (password == null) {
-      return false;
-    }
-    if (!isBlank(user.passwordHash()) && user.passwordHash().equals(password.trim())) {
-      return true;
-    }
-    return matchesPhoneLastFourDigits(password, user.phone());
-  }
-
-  private boolean isStudentOrProfessor(String role) {
-    return "STUDENT".equals(role) || "PROFESSOR".equals(role);
-  }
-
   private boolean isBlank(String value) {
     return value == null || value.trim().isEmpty();
+  }
+
+  private void ensureLoginSuccess(Map<String, Object> params) {
+    String result = stringValue(params.get("result"));
+    if ("LOGIN_SUCCESS".equals(result)) {
+      return;
+    }
+    if ("MISSING_CREDENTIALS".equals(result)) {
+      throw new AuthHandler(ErrorStatus.AUTH_MISSING_CREDENTIALS);
+    }
+    if ("MISSING_ROLE".equals(result)) {
+      throw new AuthHandler(ErrorStatus.AUTH_MISSING_ROLE);
+    }
+    throw new AuthHandler(ErrorStatus.AUTH_INVALID_CREDENTIALS);
+  }
+
+  private void ensureSaveSuccess(Map<String, Object> params) {
+    if (!"SAVE_SUCCESS".equals(stringValue(params.get("result")))) {
+      throw new AuthHandler(ErrorStatus.AUTH_INVALID_CREDENTIALS);
+    }
+  }
+
+  private Long longValue(Object value) {
+    if (value instanceof Number number) {
+      return number.longValue();
+    }
+    return Long.valueOf(String.valueOf(value));
+  }
+
+  private String stringValue(Object value) {
+    return value == null ? null : String.valueOf(value);
   }
 }

@@ -15,25 +15,18 @@
     <result property="department" column="department" />
   </resultMap>
 
-  <select id="findByLoginId" resultMap="AuthUserResultMap">
-    SELECT
-      ua.user_id,
-      ua.login_id,
-      ua.role,
-      ua.phone,
-      ua.password_hash,
-      ua.is_active,
-      COALESCE(s.s_name, p.p_name) AS user_name,
-      COALESCE(s.s_major, p.p_major) AS department
-    FROM user_account ua
-    LEFT JOIN student s ON s.s_id = ua.login_id AND ua.role = 'STUDENT'
-    LEFT JOIN professor p ON p.p_id = ua.login_id AND ua.role = 'PROFESSOR'
-    WHERE ua.login_id = #{loginId}
+  <select id="callAuthenticateLogin" statementType="CALLABLE" parameterType="map">
+    { call AUTHENTICATE_LOGIN(
+      #{loginId, mode=IN, jdbcType=VARCHAR},
+      #{password, mode=IN, jdbcType=VARCHAR},
+      #{result, mode=OUT, jdbcType=VARCHAR},
+      #{userId, mode=OUT, jdbcType=NUMERIC},
+      #{accountLoginId, mode=OUT, jdbcType=VARCHAR},
+      #{role, mode=OUT, jdbcType=VARCHAR},
+      #{roleDisplay, mode=OUT, jdbcType=VARCHAR},
+      #{publicUserId, mode=OUT, jdbcType=VARCHAR},
+      #{userName, mode=OUT, jdbcType=VARCHAR},
+      #{department, mode=OUT, jdbcType=VARCHAR}
+    ) }
   </select>
-
-  <update id="updateLastLoginAt">
-    UPDATE user_account
-    SET last_login_at = #{lastLoginAt}
-    WHERE user_id = #{userId}
-  </update>
 </mapper>

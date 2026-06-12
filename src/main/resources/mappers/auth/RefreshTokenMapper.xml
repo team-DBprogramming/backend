@@ -4,17 +4,15 @@
     "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.example.backend.mapper.RefreshTokenMapper">
-  <insert id="insert">
-    INSERT INTO refresh_token (login_id, login_type, token_hash, remember_me, expires_at)
-    SELECT
-      ua.login_id,
-      ua.role,
-      #{tokenHash},
-      #{rememberMe},
-      #{expiresAt}
-    FROM user_account ua
-    WHERE ua.user_id = #{userId}
-  </insert>
+  <select id="callSaveLoginSuccess" statementType="CALLABLE" parameterType="map">
+    { call SAVE_LOGIN_SUCCESS(
+      #{userId, mode=IN, jdbcType=NUMERIC},
+      #{tokenHash, mode=IN, jdbcType=VARCHAR},
+      #{rememberMe, mode=IN, jdbcType=NUMERIC},
+      #{expiresAt, mode=IN, jdbcType=TIMESTAMP},
+      #{result, mode=OUT, jdbcType=VARCHAR}
+    ) }
+  </select>
 
   <select id="countActive" resultType="int">
     SELECT COUNT(*)
