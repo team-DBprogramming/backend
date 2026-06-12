@@ -131,13 +131,16 @@ class AuthServiceTest {
   @Test
   void reissueAccessTokenCreatesNewAccessTokenFromActiveRefreshToken() {
     TokenPair tokens = tokenProvider.createTokenPair(1L, "2024123456", "STUDENT", false);
-    refreshTokenMapper.saveActiveToken(
-        tokenProvider.hashToken(tokens.refreshToken()), tokens.refreshTokenExpiresAt());
+    String refreshTokenHash = tokenProvider.hashToken(tokens.refreshToken());
+    refreshTokenMapper.saveActiveToken(refreshTokenHash, tokens.refreshTokenExpiresAt());
 
     AccessTokenResponse response = authService.reissueAccessToken(new LogoutRequest(tokens.refreshToken()));
 
     assertThat(response.accessToken()).isNotBlank();
     assertThat(response.accessTokenExpiresAt()).isEqualTo(Instant.parse("2026-05-30T00:30:00Z"));
+    assertThat(refreshTokenMapper.checkedTokenHash).isEqualTo(refreshTokenHash);
+    assertThat(refreshTokenMapper.checkedLoginId).isEqualTo("2024123456");
+    assertThat(refreshTokenMapper.checkedLoginType).isEqualTo("STUDENT");
   }
 
   @Test
@@ -205,6 +208,9 @@ class AuthServiceTest {
     private String revokedTokenHash;
     private String revokedLoginId;
     private String revokedLoginType;
+    private String checkedTokenHash;
+    private String checkedLoginId;
+    private String checkedLoginType;
 
     void saveActiveToken(String tokenHash, Instant expiresAt) {
       activeTokens.put(tokenHash, expiresAt);
@@ -216,12 +222,6 @@ class AuthServiceTest {
       lastExpiresAt = (Instant) params.get("expiresAt");
       activeTokens.put((String) params.get("tokenHash"), lastExpiresAt);
       params.put("result", "SAVE_SUCCESS");
-    }
-
-    @Override
-    public int countActive(String tokenHash, Instant now) {
-      Instant expiresAt = activeTokens.get(tokenHash);
-      return expiresAt != null && expiresAt.isAfter(now) ? 1 : 0;
     }
 
     @Override
@@ -238,6 +238,17 @@ class AuthServiceTest {
       revokedLoginType = (String) params.get("loginType");
       activeTokens.remove(tokenHash);
       params.put("result", "REVOKE_SUCCESS");
+    }
+
+    @Override
+    public void callValidateRefreshTokenActive(Map<String, Object> params) {
+      String tokenHash = (String) params.get("tokenHash");
+      Instant checkedAt = (Instant) params.get("checkedAt");
+      checkedTokenHash = tokenHash;
+      checkedLoginId = (String) params.get("loginId");
+      checkedLoginType = (String) params.get("loginType");
+      Instant expiresAt = activeTokens.get(tokenHash);
+      params.put("result", expiresAt != null && expiresAt.isAfter(checkedAt) ? "TOKEN_ACTIVE" : "INVALID_TOKEN");
     }
   }
 }

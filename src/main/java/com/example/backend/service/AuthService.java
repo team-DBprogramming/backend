@@ -107,9 +107,13 @@ public class AuthService {
 
     TokenClaims claims = tokenProvider.validateRefreshToken(request.refreshToken());
     String tokenHash = tokenProvider.hashToken(request.refreshToken());
-    if (refreshTokenMapper.countActive(tokenHash, clock.instant()) <= 0) {
-      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
-    }
+    Map<String, Object> validateParams = new HashMap<>();
+    validateParams.put("tokenHash", tokenHash);
+    validateParams.put("loginId", claims.loginId());
+    validateParams.put("loginType", claims.role());
+    validateParams.put("checkedAt", clock.instant());
+    refreshTokenMapper.callValidateRefreshTokenActive(validateParams);
+    ensureRefreshTokenActive(validateParams);
 
     AccessToken accessToken =
         tokenProvider.createAccessToken(claims.userId(), claims.loginId(), claims.role());
@@ -142,6 +146,12 @@ public class AuthService {
 
   private void ensureRevokeSuccess(Map<String, Object> params) {
     if (!"REVOKE_SUCCESS".equals(stringValue(params.get("result")))) {
+      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
+    }
+  }
+
+  private void ensureRefreshTokenActive(Map<String, Object> params) {
+    if (!"TOKEN_ACTIVE".equals(stringValue(params.get("result")))) {
       throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
     }
   }

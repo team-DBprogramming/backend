@@ -24,11 +24,13 @@
     ) }
   </select>
 
-  <select id="countActive" resultType="int">
-    SELECT COUNT(*)
-    FROM refresh_token
-    WHERE token_hash = #{tokenHash}
-      AND revoked_at IS NULL
-      AND expires_at &gt; #{now}
+  <select id="callValidateRefreshTokenActive" statementType="CALLABLE" parameterType="map">
+    { call VALIDATE_REFRESH_TOKEN_ACTIVE(
+      #{tokenHash, mode=IN, jdbcType=VARCHAR},
+      #{loginId, mode=IN, jdbcType=VARCHAR},
+      #{loginType, mode=IN, jdbcType=VARCHAR},
+      #{checkedAt, mode=IN, jdbcType=TIMESTAMP},
+      #{result, mode=OUT, jdbcType=VARCHAR}
+    ) }
   </select>
 </mapper>

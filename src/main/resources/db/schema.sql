@@ -21,6 +21,10 @@ begin
              'PROCEDURE'
         from dual
       union all
+      select 'VALIDATE_REFRESH_TOKEN_ACTIVE',
+             'PROCEDURE'
+        from dual
+      union all
       select 'V_AUTH_USER',
              'VIEW'
         from dual
@@ -538,6 +542,26 @@ LEFT JOIN professor p
   AND ua.role = 'PROFESSOR';
 /
 
+CREATE OR REPLACE VIEW V_NOTIFICATION_LIST AS
+SELECT
+   TO_CHAR(n.notification_id) AS notification_id,
+   n.recipient_s_id,
+   n.title,
+   DBMS_LOB.SUBSTR(n.body, 4000, 1) AS body,
+   n.type,
+   n.is_read,
+   TO_CHAR(n.created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
+   n.target_c_id AS target_course_id,
+   CASE
+      WHEN n.target_c_no IS NULL THEN NULL
+      ELSE TO_CHAR(n.target_c_no) || '遺꾨컲'
+   END AS target_division,
+   TO_CHAR(n.target_request_id) AS target_request_id,
+   n.created_at AS sort_created_at,
+   n.notification_id AS sort_notification_id
+FROM notification n;
+/
+
 CREATE OR REPLACE PROCEDURE AUTHENTICATE_LOGIN(
    p_login_id         IN user_account.login_id%TYPE,
    p_password         IN user_account.password_hash%TYPE,
@@ -701,6 +725,42 @@ EXCEPTION
       p_result := 'INVALID_TOKEN';
    WHEN OTHERS THEN
       p_result := 'REVOKE_FAILED';
+END;
+/
+
+CREATE OR REPLACE PROCEDURE VALIDATE_REFRESH_TOKEN_ACTIVE(
+   p_token_hash IN refresh_token.token_hash%TYPE,
+   p_login_id   IN refresh_token.login_id%TYPE,
+   p_login_type IN refresh_token.login_type%TYPE,
+   p_checked_at IN refresh_token.expires_at%TYPE,
+   p_result     OUT varchar2
+)
+IS
+   v_token refresh_token%ROWTYPE;
+BEGIN
+   p_result := 'INVALID_TOKEN';
+
+   SELECT *
+     INTO v_token
+     FROM refresh_token
+    WHERE token_hash = p_token_hash
+      AND login_id = p_login_id
+      AND login_type = p_login_type
+      AND revoked_at IS NULL
+      AND expires_at > p_checked_at;
+
+   IF v_token.token_id IS NOT NULL THEN
+      p_result := 'TOKEN_ACTIVE';
+   ELSE
+      p_result := 'INVALID_TOKEN';
+   END IF;
+EXCEPTION
+   WHEN NO_DATA_FOUND THEN
+      p_result := 'INVALID_TOKEN';
+   WHEN TOO_MANY_ROWS THEN
+      p_result := 'INVALID_TOKEN';
+   WHEN OTHERS THEN
+      p_result := 'VALIDATE_FAILED';
 END;
 /
 
