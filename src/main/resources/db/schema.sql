@@ -686,9 +686,6 @@ EXCEPTION
     WHEN NO_DATA_FOUND THEN
         result := 'COURSE_NOT_FOUND';
 
-    WHEN DUP_VAL_ON_INDEX THEN
-        result := 'DUPLICATE_COURSE';
-
     WHEN OTHERS THEN
         result := 'SQLCODE=' || SQLCODE;
 END;
