@@ -4,6 +4,7 @@ import com.example.backend.dto.student.StudentCourseSchedule;
 import com.example.backend.dto.student.StudentCourseReviewItem;
 import com.example.backend.dto.student.StudentCourseSummary;
 import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -11,32 +12,38 @@ import org.apache.ibatis.annotations.Param;
 public interface StudentCourseMapper {
 
   List<StudentCourseSummary> findCourses(
-      @Param("semester") String semester,
       @Param("keyword") String keyword,
-      @Param("courseCategory") String courseCategory,
-      @Param("major") String major,
+      @Param("courseMajor") String courseMajor,
       @Param("courseType") String courseType,
       @Param("days") List<String> days,
+      @Param("targetYear") Integer targetYear,
+      @Param("isEnglish") Boolean isEnglish,
       @Param("credits") List<Integer> credits,
       @Param("startTime") String startTime,
       @Param("endTime") String endTime,
+      @Param("hasSeatMargin") Boolean hasSeatMargin,
+      @Param("highReview") Boolean highReview,
       @Param("sort") String sort,
       @Param("offset") Integer offset,
       @Param("size") Integer size);
 
   Integer countCourses(
-      @Param("semester") String semester,
       @Param("keyword") String keyword,
-      @Param("courseCategory") String courseCategory,
-      @Param("major") String major,
+      @Param("courseMajor") String courseMajor,
       @Param("courseType") String courseType,
       @Param("days") List<String> days,
+      @Param("targetYear") Integer targetYear,
+      @Param("isEnglish") Boolean isEnglish,
       @Param("credits") List<Integer> credits,
       @Param("startTime") String startTime,
-      @Param("endTime") String endTime);
+      @Param("endTime") String endTime,
+      @Param("hasSeatMargin") Boolean hasSeatMargin,
+      @Param("highReview") Boolean highReview);
 
   StudentCourseSummary findCourse(
       @Param("courseId") String courseId, @Param("division") String division);
+
+  Map<String, Object> findCourseDetailFields(@Param("courseId") String courseId);
 
   String findDescription(@Param("courseId") String courseId);
 
@@ -54,14 +61,17 @@ public interface StudentCourseMapper {
   List<StudentCourseReviewItem> findCourseReviews(
       @Param("courseId") String courseId, @Param("division") String division);
 
-  Long findStudentId(@Param("userId") Long userId);
-
   Long findSectionId(@Param("courseId") String courseId, @Param("division") String division);
 
-  void insertBorrowRequest(
-      @Param("studentId") Long studentId,
-      @Param("sectionId") Long sectionId,
-      @Param("reason") String reason);
+  Integer countCurrentEnrollment(
+      @Param("studentId") String studentId,
+      @Param("courseId") String courseId,
+      @Param("division") String division);
 
-  Long findLatestBorrowRequestId(@Param("studentId") Long studentId, @Param("sectionId") Long sectionId);
+  String findBorrowRequestStatus(
+      @Param("studentId") String studentId,
+      @Param("courseId") String courseId,
+      @Param("division") String division);
+
+  void callInsertBorrowRequest(Map<String, Object> params);
 }

@@ -7,5 +7,6 @@ public record NotificationItem(
     String type,
     boolean isRead,
     String createdAt,
-    String targetSectionId,
+    String targetCourseId,
+    String targetDivision,
     String targetRequestId) {}

@@ -11,6 +11,7 @@ public record NotificationDetailResponse(
     String courseId,
     String courseName,
     String division,
-    String targetSectionId,
+    String targetCourseId,
+    String targetDivision,
     String targetRequestId,
     String requestReason) {}

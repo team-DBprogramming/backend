@@ -55,7 +55,7 @@ public class AuthService {
       throw new AuthHandler(ErrorStatus.AUTH_MISSING_ROLE);
     }
 
-    if (!matchesPhoneLastFourDigits(request.password(), user.phone())) {
+    if (!matchesPassword(request.password(), user)) {
       throw new AuthHandler(ErrorStatus.AUTH_INVALID_CREDENTIALS);
     }
 
@@ -120,6 +120,16 @@ public class AuthService {
   private boolean matchesPhoneLastFourDigits(String password, String phone) {
     String digits = phone == null ? "" : phone.replaceAll("[^0-9]", "");
     return digits.length() >= 4 && digits.substring(digits.length() - 4).equals(password.trim());
+  }
+
+  private boolean matchesPassword(String password, AuthUser user) {
+    if (password == null) {
+      return false;
+    }
+    if (!isBlank(user.passwordHash()) && user.passwordHash().equals(password.trim())) {
+      return true;
+    }
+    return matchesPhoneLastFourDigits(password, user.phone());
   }
 
   private boolean isStudentOrProfessor(String role) {

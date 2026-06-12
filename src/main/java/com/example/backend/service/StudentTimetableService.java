@@ -1,14 +1,18 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.student.StudentAiTimetableRequest;
 import com.example.backend.dto.student.StudentLectureTime;
 import com.example.backend.dto.student.StudentTimetableItem;
 import com.example.backend.dto.student.StudentTimetableResponse;
 import com.example.backend.mapper.StudentTimetableMapper;
 import com.example.backend.security.AuthenticatedUser;
+import com.example.backend.utils.SemesterUtils;
+import com.example.backend.utils.SemesterUtils.Semester;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,38 +23,36 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StudentTimetableService {
 
-  private static final int DEFAULT_RECOMMEND_CREDITS = 18;
-
   private final StudentTimetableMapper timetableMapper;
+  private final Clock clock;
 
-  public StudentTimetableService(StudentTimetableMapper timetableMapper) {
+  public StudentTimetableService(StudentTimetableMapper timetableMapper, Clock clock) {
     this.timetableMapper = timetableMapper;
+    this.clock = clock;
   }
 
   @Transactional(readOnly = true)
   public StudentTimetableResponse getTimetable(AuthenticatedUser currentUser, String semester) {
-    Long userId = currentUser.requireStudentUserId();
-    String normalizedSemester = normalize(semester);
-    return toResponse(normalizedSemester, timetableMapper.findEnrollmentTimetable(userId, normalizedSemester), true);
+    String studentId = currentUser.requireStudentId();
+    Semester currentSemester = SemesterUtils.current(LocalDate.now(clock));
+    Map<String, Object> params = new HashMap<>();
+    params.put("studentId", studentId);
+    timetableMapper.callGetEnrollmentTimetable(params);
+    return toResponse(
+        SemesterUtils.format(currentSemester),
+        listValue(params.get("rows")),
+        true);
   }
 
   @Transactional(readOnly = true)
   public StudentTimetableResponse exportCart(AuthenticatedUser currentUser) {
-    Long userId = currentUser.requireStudentUserId();
-    return toResponse(null, timetableMapper.findCartTimetable(userId), true);
+    String studentId = currentUser.requireStudentId();
+    return toResponse(null, timetableMapper.findCartTimetable(studentId), true);
   }
 
-  @Transactional(readOnly = true)
-  public StudentTimetableResponse recommend(AuthenticatedUser currentUser, StudentAiTimetableRequest request) {
-    Long userId = currentUser.requireStudentUserId();
-    Integer maxCredits =
-        request == null || request.maxCredits() == null ? DEFAULT_RECOMMEND_CREDITS : request.maxCredits();
-    String keyword = request == null ? null : normalize(request.keyword());
-    return toResponse(null, timetableMapper.findRecommendedTimetable(userId, maxCredits, keyword), true);
-  }
-
-  private String normalize(String value) {
-    return value == null || value.trim().isEmpty() ? null : value.trim();
+  @SuppressWarnings("unchecked")
+  private static List<StudentTimetableItem> listValue(Object value) {
+    return value instanceof List<?> list ? (List<StudentTimetableItem>) list : List.of();
   }
 
   public static StudentTimetableResponse toResponse(

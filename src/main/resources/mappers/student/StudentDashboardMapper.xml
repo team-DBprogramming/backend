@@ -38,147 +38,93 @@
     <result property="reviewPendingCount" column="review_pending_count" />
   </resultMap>
 
-  <sql id="semesterCondition">
-    (
-      (#{semester} IS NULL AND sm.is_current = 1)
-      OR (#{semester} IS NOT NULL AND TO_CHAR(sm.year) || '-' ||
-        CASE sm.term
-          WHEN 'SPRING' THEN '1'
-          WHEN 'FALL' THEN '2'
-          ELSE sm.term
-        END || '학기' = #{semester})
-    )
-  </sql>
-
   <select id="findStudentInfo" resultMap="StudentInfoResultMap">
     SELECT
-      s.name,
-      d.dept_name AS major,
-      s.year_level AS grade,
-      TO_CHAR(sm.year) || '-' ||
-        CASE sm.term
-          WHEN 'SPRING' THEN '1'
-          WHEN 'FALL' THEN '2'
-          ELSE sm.term
-        END || '학기' AS current_semester
+      s.s_name AS name,
+      s.s_major AS major,
+      s.s_year AS grade,
+      #{semesterLabel} AS current_semester
     FROM student s
-    JOIN department d ON d.dept_id = s.dept_id
-    LEFT JOIN semester sm ON <include refid="semesterCondition" />
-    WHERE s.user_id = #{userId}
+    WHERE s.s_id = #{studentId}
   </select>
 
-  <select id="findEnrollmentStatus" resultMap="EnrollmentStatusResultMap">
-    SELECT
-      CASE
-        WHEN SYSTIMESTAMP BETWEEN rp.start_at AND rp.end_at THEN 'IN_PROGRESS'
-        WHEN SYSTIMESTAMP <![CDATA[<]]> rp.start_at THEN 'NOT_STARTED'
-        ELSE 'CLOSED'
-      END AS status,
-      TO_CHAR(CAST(rp.end_at AS DATE), 'YYYY-MM-DD') AS deadline,
-      GREATEST(0, CEIL(CAST(rp.end_at AS DATE) - SYSDATE)) AS days_left
-    FROM student s
-    JOIN semester sm ON <include refid="semesterCondition" />
-    JOIN registration_period rp ON rp.semester_id = sm.semester_id
-    WHERE s.user_id = #{userId}
-      AND rp.period_type IN ('MAIN', 'ADD_DROP')
-      AND (rp.target_year IS NULL OR rp.target_year = s.year_level)
-    ORDER BY
-      CASE
-        WHEN SYSTIMESTAMP BETWEEN rp.start_at AND rp.end_at THEN 1
-        WHEN SYSTIMESTAMP <![CDATA[<]]> rp.start_at THEN 2
-        ELSE 3
-      END,
-      rp.end_at
-    FETCH FIRST 1 ROW ONLY
-  </select>
+  <select id="callGetEnrollStatus"
+        statementType="CALLABLE"
+        parameterType="map">
+  {
+    CALL GET_ENROLL_STATUS(
+      #{status,
+        mode=OUT,
+        jdbcType=VARCHAR},
 
-  <select id="findCreditSummary" resultMap="CreditSummaryResultMap">
-    SELECT
-      (
-        SELECT COALESCE(SUM(c.credits), 0)
-        FROM enrollment e
-        JOIN course_section cs ON cs.section_id = e.section_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        JOIN course c ON c.course_id = cs.course_id
-        WHERE e.student_id = s.student_id
-          AND e.status = 'ENROLLED'
-          AND <include refid="semesterCondition" />
-      ) AS applied,
-      #{maxCredits} AS max_credits,
-      (
-        SELECT COUNT(*)
-        FROM enrollment e
-        JOIN course_section cs ON cs.section_id = e.section_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        WHERE e.student_id = s.student_id
-          AND e.status = 'ENROLLED'
-          AND <include refid="semesterCondition" />
-      ) AS course_count,
-      (
-        SELECT COUNT(*)
-        FROM cart_item ci
-        JOIN course_section ccs ON ccs.section_id = ci.section_id
-        JOIN semester csm ON csm.semester_id = ccs.semester_id
-        WHERE ci.student_id = s.student_id
-          AND (
-            (#{semester} IS NULL AND csm.is_current = 1)
-            OR (#{semester} IS NOT NULL AND TO_CHAR(csm.year) || '-' ||
-              CASE csm.term
-                WHEN 'SPRING' THEN '1'
-                WHEN 'FALL' THEN '2'
-                ELSE csm.term
-              END || '학기' = #{semester})
-          )
-      ) AS cart_count
-    FROM student s
-    WHERE s.user_id = #{userId}
+      #{startAt,
+        mode=OUT,
+        jdbcType=TIMESTAMP},
+
+      #{endAt,
+        mode=OUT,
+        jdbcType=TIMESTAMP},
+
+      #{daysLeft,
+        mode=OUT,
+        jdbcType=NUMERIC},
+
+      #{remainingSeconds,
+        mode=OUT,
+        jdbcType=NUMERIC},
+
+      #{deadline,
+        mode=OUT,
+        jdbcType=TIMESTAMP}
+    )
+  }
+</select>
+
+  <select id="callGetCreditSummary" statementType="CALLABLE" parameterType="map">
+    { CALL GET_CREDIT_SUMMARY(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{applied, mode=OUT, jdbcType=NUMERIC},
+      #{max, mode=OUT, jdbcType=NUMERIC},
+      #{courseCount, mode=OUT, jdbcType=NUMERIC},
+      #{cartCount, mode=OUT, jdbcType=NUMERIC}
+    ) }
   </select>
 
   <select id="findTodaySchedules" resultMap="TodayScheduleResultMap">
     SELECT
-      c.course_code AS course_id,
-      c.course_name,
-      p.name AS professor,
-      ss.start_time,
-      ss.end_time,
-      cr.building || ' ' || cr.room_no AS room
-    FROM student s
-    JOIN enrollment e ON e.student_id = s.student_id AND e.status = 'ENROLLED'
-    JOIN course_section cs ON cs.section_id = e.section_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN section_schedule ss ON ss.section_id = cs.section_id
-    JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-    WHERE s.user_id = #{userId}
-      AND cs.status != 'CANCELLED'
-      AND ss.day_of_week = #{dayOfWeek}
-      AND <include refid="semesterCondition" />
-    ORDER BY ss.start_time, c.course_name
+      e.c_id AS course_id,
+      l.subject AS course_name,
+      COALESCE(p.p_name, l.prof) AS professor,
+      ct.c_start AS start_time,
+      ct.c_end AS end_time,
+      c.c_where AS room
+    FROM enroll e
+    JOIN lecture l ON l.no = e.c_id
+    JOIN class c ON c.c_id = e.c_id AND c.c_no = e.c_no
+    LEFT JOIN professor p ON p.p_id = COALESCE(c.p_id, l.p_id)
+    JOIN class_time ct ON ct.c_id = c.c_id AND ct.c_no = c.c_no
+    WHERE e.s_id = #{studentId}
+      AND e.e_year = #{year}
+      AND e.e_semester = #{semester}
+      AND e.e_status = 'ENROLLED'
+      AND c.c_status != 'CANCELLED'
+      AND ct.c_day = #{dayOfWeek}
+    ORDER BY ct.c_start, l.subject
   </select>
 
   <select id="findQuickActions" resultMap="QuickActionsResultMap">
     SELECT
+      (SELECT COUNT(*) FROM cart_item ci WHERE ci.s_id = #{studentId}) AS cart_count,
       (
         SELECT COUNT(*)
-        FROM cart_item ci
-        JOIN course_section cs ON cs.section_id = ci.section_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        WHERE ci.student_id = s.student_id
-          AND <include refid="semesterCondition" />
-      ) AS cart_count,
-      (
-        SELECT COUNT(*)
-        FROM enrollment e
-        JOIN course_section cs ON cs.section_id = e.section_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        LEFT JOIN review r ON r.enrollment_id = e.enrollment_id
-        WHERE e.student_id = s.student_id
-          AND e.status = 'ENROLLED'
+        FROM enroll e
+        LEFT JOIN review r ON r.e_id = e.e_id
+        WHERE e.s_id = #{studentId}
+          AND e.e_year = #{year}
+          AND e.e_semester = #{semester}
+          AND e.e_status IN ('ENROLLED', 'COMPLETED')
           AND r.review_id IS NULL
-          AND <include refid="semesterCondition" />
       ) AS review_pending_count
-    FROM student s
-    WHERE s.user_id = #{userId}
+    FROM dual
   </select>
 </mapper>

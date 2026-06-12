@@ -2,30 +2,29 @@ package com.example.backend.mapper;
 
 import com.example.backend.dto.student.StudentCartItem;
 import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface StudentCartMapper {
 
-  Long findStudentId(@Param("userId") Long userId);
-
   Long findSectionId(@Param("courseId") String courseId, @Param("division") String division);
 
-  List<StudentCartItem> findCartItems(@Param("studentId") Long studentId);
+  List<StudentCartItem> findCartItems(@Param("studentId") String studentId);
 
-  void insertCart(@Param("studentId") Long studentId, @Param("sectionId") Long sectionId);
+  void callInsertCart(Map<String, Object> params);
 
-  int deleteCart(@Param("studentId") Long studentId, @Param("cartItemId") Long cartItemId);
+  Long findCartId(
+      @Param("studentId") String studentId,
+      @Param("courseId") String courseId,
+      @Param("sectionId") Long sectionId);
 
-  int countCart(@Param("studentId") Long studentId);
+  void callDeleteCart(Map<String, Object> params);
 
-  int countSelectedCart(
-      @Param("studentId") Long studentId, @Param("cartItemIds") java.util.List<Long> cartItemIds);
+  void callDeleteCartBySection(Map<String, Object> params);
 
-  int insertEnrollmentsFromCart(
-      @Param("studentId") Long studentId, @Param("cartItemIds") java.util.List<Long> cartItemIds);
+  void callCountCart(Map<String, Object> params);
 
-  int updateEnrolledCountsFromCart(
-      @Param("studentId") Long studentId, @Param("cartItemIds") java.util.List<Long> cartItemIds);
+  void callEnrollFromCart(Map<String, Object> params);
 }

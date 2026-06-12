@@ -6,25 +6,27 @@ import com.example.backend.dto.student.StudentInfo;
 import com.example.backend.dto.student.StudentQuickActions;
 import com.example.backend.dto.student.StudentTodaySchedule;
 import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface StudentDashboardMapper {
 
-  StudentInfo findStudentInfo(@Param("userId") Long userId, @Param("semester") String semester);
+  StudentInfo findStudentInfo(@Param("studentId") String studentId, @Param("semesterLabel") String semesterLabel);
 
-  StudentEnrollmentStatus findEnrollmentStatus(@Param("userId") Long userId, @Param("semester") String semester);
+  void callGetEnrollStatus(Map<String, Object> params);
 
-  StudentCreditSummary findCreditSummary(
-      @Param("userId") Long userId,
-      @Param("maxCredits") Integer maxCredits,
-      @Param("semester") String semester);
+  void callGetCreditSummary(Map<String, Object> params);
 
   List<StudentTodaySchedule> findTodaySchedules(
-      @Param("userId") Long userId,
+      @Param("studentId") String studentId,
       @Param("dayOfWeek") String dayOfWeek,
-      @Param("semester") String semester);
+      @Param("year") Integer year,
+      @Param("semester") Integer semester);
 
-  StudentQuickActions findQuickActions(@Param("userId") Long userId, @Param("semester") String semester);
+  StudentQuickActions findQuickActions(
+      @Param("studentId") String studentId,
+      @Param("year") Integer year,
+      @Param("semester") Integer semester);
 }

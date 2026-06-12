@@ -9,13 +9,14 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface NotificationMapper {
 
-  List<NotificationItem> findNotifications(@Param("recipientUserId") Long recipientUserId);
+  List<NotificationItem> findNotifications(
+      @Param("studentId") String studentId);
 
   NotificationDetailResponse findNotification(
-      @Param("recipientUserId") Long recipientUserId,
+      @Param("studentId") String studentId,
       @Param("notificationId") String notificationId);
 
   void markAsRead(
-      @Param("recipientUserId") Long recipientUserId,
+      @Param("studentId") String studentId,
       @Param("notificationId") String notificationId);
 }

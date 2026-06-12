@@ -17,101 +17,42 @@
     <result property="room" column="room" />
   </resultMap>
 
-  <sql id="timetableSelect">
-    SELECT
-      c.course_code AS course_id,
-      c.course_name,
-      c.course_type,
-      c.credits AS credit,
-      p.name AS professor,
-      cs.section_no || '분반' AS division,
-      ss.day_of_week,
-      ss.start_time,
-      ss.end_time,
-      cr.building || ' ' || cr.room_no AS room
-    FROM student s
-  </sql>
-
-  <sql id="semesterCondition">
-    (
-      (#{semester} IS NULL AND sm.is_current = 1)
-      OR
-      (
-        #{semester} IS NOT NULL
-        AND TO_CHAR(sm.year) || '-' ||
-          CASE sm.term
-            WHEN 'SPRING' THEN '1'
-            WHEN 'FALL' THEN '2'
-            ELSE sm.term
-          END = #{semester}
-      )
-    )
-  </sql>
-
-  <select id="findEnrollmentTimetable" resultMap="TimetableResultMap">
-    <include refid="timetableSelect" />
-    JOIN enrollment e ON e.student_id = s.student_id AND e.status = 'ENROLLED'
-    JOIN course_section cs ON cs.section_id = e.section_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN section_schedule ss ON ss.section_id = cs.section_id
-    JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-    WHERE s.user_id = #{userId}
-      AND <include refid="semesterCondition" />
-    ORDER BY ss.day_of_week, ss.start_time
+  <select id="callGetEnrollmentTimetable" statementType="CALLABLE" parameterType="map">
+    { CALL GET_ENROLLMENT_TIMETABLE(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{rows, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.StudentTimetableMapper.TimetableResultMap}
+    ) }
   </select>
 
   <select id="findCartTimetable" resultMap="TimetableResultMap">
-    <include refid="timetableSelect" />
-    JOIN cart_item ci ON ci.student_id = s.student_id
-    JOIN course_section cs ON cs.section_id = ci.section_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN section_schedule ss ON ss.section_id = cs.section_id
-    JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-    WHERE s.user_id = #{userId}
-      AND sm.is_current = 1
-    ORDER BY ss.day_of_week, ss.start_time
-  </select>
-
-  <select id="findRecommendedTimetable" resultMap="TimetableResultMap">
-    SELECT *
-    FROM (
-      SELECT
-        c.course_code AS course_id,
-        c.course_name,
-        c.course_type,
-        c.credits AS credit,
-        p.name AS professor,
-        cs.section_no || '분반' AS division,
-        ss.day_of_week,
-        ss.start_time,
-        ss.end_time,
-        cr.building || ' ' || cr.room_no AS room,
-        SUM(c.credits) OVER (ORDER BY c.course_name, cs.section_no) AS running_credits
-      FROM student s
-      JOIN course_section cs ON 1 = 1
-      JOIN semester sm ON sm.semester_id = cs.semester_id
-      JOIN course c ON c.course_id = cs.course_id
-      JOIN professor p ON p.professor_id = cs.professor_id
-      JOIN section_schedule ss ON ss.section_id = cs.section_id
-      JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-      WHERE s.user_id = #{userId}
-        AND sm.is_current = 1
-        AND cs.status = 'OPEN'
-        AND c.target_year = s.year_level
-        AND (#{keyword} IS NULL OR LOWER(c.course_name) LIKE '%' || LOWER(#{keyword}) || '%')
-        AND NOT EXISTS (
-          SELECT 1
-          FROM enrollment e
-          WHERE e.student_id = s.student_id
-            AND e.section_id = cs.section_id
-            AND e.status = 'ENROLLED'
-        )
-    )
-    WHERE running_credits <![CDATA[<=]]> #{maxCredits}
-    ORDER BY day_of_week, start_time
+    SELECT
+      ci.c_id AS course_id,
+      l.subject AS course_name,
+      l.course_type,
+      l.credit,
+      COALESCE(p.p_name, l.prof) AS professor,
+      TO_CHAR(c.c_no) || '분반' AS division,
+      ct.c_day AS day_of_week,
+      ct.c_start AS start_time,
+      ct.c_end AS end_time,
+      c.c_where AS room
+    FROM cart_item ci
+    JOIN lecture l ON l.no = ci.c_id
+    JOIN class c ON c.c_id = ci.c_id AND c.c_no = ci.c_no
+    LEFT JOIN professor p ON p.p_id = COALESCE(c.p_id, l.p_id)
+    JOIN class_time ct ON ct.c_id = c.c_id AND ct.c_no = c.c_no
+    WHERE ci.s_id = #{studentId}
+    ORDER BY
+      CASE ct.c_day
+        WHEN 'MON' THEN 1
+        WHEN 'TUE' THEN 2
+        WHEN 'WED' THEN 3
+        WHEN 'THU' THEN 4
+        WHEN 'FRI' THEN 5
+        WHEN 'SAT' THEN 6
+        ELSE 7
+      END,
+      ct.c_start,
+      ci.c_id
   </select>
 </mapper>

@@ -6,6 +6,7 @@ public class AuthUser {
   private String loginId;
   private String role;
   private String phone;
+  private String passwordHash;
   private Integer active;
   private String name;
   private String department;
@@ -27,6 +28,19 @@ public class AuthUser {
     this.active = active;
     this.name = name;
     this.department = department;
+  }
+
+  public AuthUser(
+      Long userId,
+      String loginId,
+      String role,
+      String phone,
+      String passwordHash,
+      Integer active,
+      String name,
+      String department) {
+    this(userId, loginId, role, phone, active, name, department);
+    this.passwordHash = passwordHash;
   }
 
   public Long getUserId() {
@@ -75,6 +89,18 @@ public class AuthUser {
 
   public String phone() {
     return phone;
+  }
+
+  public String getPasswordHash() {
+    return passwordHash;
+  }
+
+  public void setPasswordHash(String passwordHash) {
+    this.passwordHash = passwordHash;
+  }
+
+  public String passwordHash() {
+    return passwordHash;
   }
 
   public Integer getActive() {
