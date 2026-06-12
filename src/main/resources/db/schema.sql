@@ -1578,62 +1578,7 @@ EXCEPTION
 END;
 /
 
-------------------------------------------------------------
--- 리뷰 입력 전 검증 트리거
--- 중복은 UK_REVIEW_ENROLL이 최종 차단
-------------------------------------------------------------
-CREATE OR REPLACE TRIGGER TRG_REVIEW_BEFORE_INSERT
-BEFORE INSERT ON review
-FOR EACH ROW
-DECLARE
-    v_status enroll.e_status%TYPE;
-BEGIN
-    SELECT e_status
-    INTO v_status
-    FROM enroll
-    WHERE e_id = :NEW.e_id;
 
-    IF v_status NOT IN ('ENROLLED', 'COMPLETED') THEN
-        RAISE_APPLICATION_ERROR(
-            -20021,
-            '리뷰를 작성할 수 없는 수강 상태입니다.'
-        );
-    END IF;
-
-    IF :NEW.created_at IS NULL THEN
-        :NEW.created_at := SYSTIMESTAMP;
-    END IF;
-
-    IF :NEW.is_anonymous IS NULL THEN
-        :NEW.is_anonymous := 1;
-    END IF;
-END;
-/
-
-------------------------------------------------------------
--- 수강 요청 입력 전 기본값 보정 트리거
--- 중복/재요청 처리는 INSERT_BORROW_REQUEST의 MERGE가 담당
-------------------------------------------------------------
-CREATE OR REPLACE TRIGGER TRG_BORROW_REQUEST_BEFORE
-BEFORE INSERT OR UPDATE ON course_request
-FOR EACH ROW
-BEGIN
-    IF INSERTING THEN
-        IF :NEW.status IS NULL THEN
-            :NEW.status := 'PENDING';
-        END IF;
-
-        IF :NEW.requested_at IS NULL THEN
-            :NEW.requested_at := SYSTIMESTAMP;
-        END IF;
-    END IF;
-
-    IF UPDATING AND :NEW.status = 'PENDING' THEN
-        :NEW.processed_at := NULL;
-        :NEW.processed_by_p_id := NULL;
-    END IF;
-END;
-/
 
 ALTER PROCEDURE ENROLL_FROM_CART COMPILE;
 
