@@ -1,6 +1,5 @@
 package com.example.backend.controller;
 
-import com.example.backend.dto.student.StudentAiTimetableRequest;
 import com.example.backend.dto.student.StudentApiResponse;
 import com.example.backend.dto.student.StudentCartExportRequest;
 import com.example.backend.dto.student.StudentTimetableResponse;
@@ -18,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@Tag(name = "Student Timetable", description = "학생 시간표 및 AI 추천 API")
+@Tag(name = "Student Timetable", description = "학생 시간표 API")
 public class StudentTimetableController {
 
   private final StudentTimetableService timetableService;
@@ -47,12 +46,4 @@ public class StudentTimetableController {
         "S200", "장바구니 시간표 내보내기 성공", timetableService.exportCart(userDetails.toAuthenticatedUser()));
   }
 
-  @PostMapping("/timetable/ai-recommend")
-  @Operation(summary = "AI 시간표 추천", description = "선호 조건을 바탕으로 추천 시간표 후보를 조회합니다.")
-  public StudentApiResponse<StudentTimetableResponse> recommend(
-      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
-      @RequestBody(required = false) StudentAiTimetableRequest request) {
-    return StudentApiResponse.success(
-        "S200", "AI 시간표 추천 성공", timetableService.recommend(userDetails.toAuthenticatedUser(), request));
-  }
 }

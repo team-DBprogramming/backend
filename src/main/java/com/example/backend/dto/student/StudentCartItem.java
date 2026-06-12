@@ -11,7 +11,6 @@ public class StudentCartItem {
   private String schedule;
   private String room;
   private String seatStatus;
-  private Integer scrapped;
   private String conflictWith;
   private Boolean isApplicable;
 
@@ -87,14 +86,6 @@ public class StudentCartItem {
 
   public void setSeatStatus(String seatStatus) {
     this.seatStatus = seatStatus;
-  }
-
-  public Integer getScrapped() {
-    return scrapped;
-  }
-
-  public void setScrapped(Integer scrapped) {
-    this.scrapped = scrapped;
   }
 
   public String getConflictWith() {

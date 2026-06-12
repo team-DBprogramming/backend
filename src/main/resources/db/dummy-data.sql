@@ -1,207 +1,2776 @@
--- Dummy seed data for src/main/resources/db/schema.sql.
--- Run this after schema.sql has been executed.
+-- Dummy seed data for src/main/resources/db/assignment-schema.sql.
+-- Run this after assignment-schema.sql has been executed.
+-- Data is mapped from dummy-data.sql into the assignment-style schema:
+-- user_account/student -> student, course -> lecture, course_section -> class,
+-- section_schedule -> class_time, enrollment -> enroll.
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE;
 
-ALTER SESSION SET CONTAINER = XEPDB1;
-ALTER SESSION SET CURRENT_SCHEMA = backend;
+alter session set container = xepdb1;
+alter session set current_schema = backend;
 
-INSERT INTO department (dept_id, dept_code, dept_name, college) VALUES (1, 'CSE', '컴퓨터공학과', '소프트웨어대학');
-INSERT INTO department (dept_id, dept_code, dept_name, college) VALUES (2, 'BUS', '경영학과', '경영대학');
-INSERT INTO department (dept_id, dept_code, dept_name, college) VALUES (3, 'MATH', '수학과', '자연과학대학');
-INSERT INTO department (dept_id, dept_code, dept_name, college) VALUES (4, 'ENG', '영어영문학과', '인문대학');
+insert into student (
+   s_id,
+   s_pwd,
+   s_name,
+   s_major,
+   s_addr,
+   s_phone,
+   s_email,
+   s_year,
+   s_status
+) values ( '20230001',
+           '0001',
+           '김민지',
+           '컴퓨터과학과',
+           '서울시 용산구',
+           '010-1111-0001',
+           'minji.kim@example.edu',
+           4,
+           'ENROLLED' );
+insert into student (
+   s_id,
+   s_pwd,
+   s_name,
+   s_major,
+   s_addr,
+   s_phone,
+   s_email,
+   s_year,
+   s_status
+) values ( '20230002',
+           '0002',
+           '이준호',
+           '컴퓨터과학과',
+           '서울시 마포구',
+           '010-1111-0002',
+           'junho.lee@example.edu',
+           4,
+           'ENROLLED' );
+insert into student (
+   s_id,
+   s_pwd,
+   s_name,
+   s_major,
+   s_addr,
+   s_phone,
+   s_email,
+   s_year,
+   s_status
+) values ( '20240001',
+           '0003',
+           '박서연',
+           '컴퓨터과학과',
+           '서울시 서대문구',
+           '010-1111-0003',
+           'seoyeon.park@example.edu',
+           3,
+           'ENROLLED' );
+insert into student (
+   s_id,
+   s_pwd,
+   s_name,
+   s_major,
+   s_addr,
+   s_phone,
+   s_email,
+   s_year,
+   s_status
+) values ( '20220001',
+           '0004',
+           '최현우',
+           '경영학과',
+           '서울시 종로구',
+           '010-1111-0004',
+           'hyunwoo.choi@example.edu',
+           5,
+           'LEAVE' );
+insert into student (
+   s_id,
+   s_pwd,
+   s_name,
+   s_major,
+   s_addr,
+   s_phone,
+   s_email,
+   s_year,
+   s_status
+) values ( '20210001',
+           '0005',
+           '정유나',
+           '수학과',
+           '서울시 중구',
+           '010-1111-0005',
+           'yuna.jung@example.edu',
+           6,
+           'ENROLLED' );
 
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (1, '20230001', 'dummy-password-hash', 'STUDENT', 'minji.kim@example.edu', '010-1111-0001', 1, TO_TIMESTAMP('2026-05-28 09:10:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2023-03-02 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (2, '20230002', 'dummy-password-hash', 'STUDENT', 'junho.lee@example.edu', '010-1111-0002', 1, TO_TIMESTAMP('2026-05-29 13:20:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2023-03-02 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (3, '20240001', 'dummy-password-hash', 'STUDENT', 'seoyeon.park@example.edu', '010-1111-0003', 1, TO_TIMESTAMP('2026-05-27 18:05:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2024-03-04 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (4, '20220001', 'dummy-password-hash', 'STUDENT', 'hyunwoo.choi@example.edu', '010-1111-0004', 1, NULL, TO_TIMESTAMP('2022-03-02 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (5, '20210001', 'dummy-password-hash', 'STUDENT', 'yuna.jung@example.edu', '010-1111-0005', 1, TO_TIMESTAMP('2026-05-20 15:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2021-03-02 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (6, 'P1001', 'dummy-password-hash', 'PROFESSOR', 'jihoon.han@example.edu', '02-2222-1001', 1, TO_TIMESTAMP('2026-05-30 08:40:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2020-02-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (10, '2024123456', 'dummy-password-hash', 'STUDENT', 'gildong.hong@example.edu', '010-1111-1234', 1, TO_TIMESTAMP('2026-06-01 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2024-03-04 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (7, 'P1002', 'dummy-password-hash', 'PROFESSOR', 'sora.kang@example.edu', '02-2222-1002', 1, TO_TIMESTAMP('2026-05-29 10:30:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2020-02-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (8, 'P1003', 'dummy-password-hash', 'PROFESSOR', 'taemin.oh@example.edu', '02-2222-1003', 1, NULL, TO_TIMESTAMP('2020-02-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO user_account (user_id, login_id, password_hash, role, email, phone, is_active, last_login_at, created_at)
-VALUES (9, 'P1004', 'dummy-password-hash', 'PROFESSOR', 'eunha.shin@example.edu', '02-2222-1004', 1, TO_TIMESTAMP('2026-05-28 11:15:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2020-02-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
+insert into professor (
+   p_id,
+   p_name,
+   p_major,
+   p_office,
+   p_phone,
+   p_pwd,
+   p_email
+) values ( 'P10001',
+           '한지훈',
+           '컴퓨터과학과',
+           '소프트웨어관501',
+           '02-2222-1001',
+           '1001',
+           'jihoon.han@example.edu' );
+insert into professor (
+   p_id,
+   p_name,
+   p_major,
+   p_office,
+   p_phone,
+   p_pwd,
+   p_email
+) values ( 'P10002',
+           '강소라',
+           '컴퓨터과학과',
+           '소프트웨어관407',
+           '02-2222-1002',
+           '1002',
+           'sora.kang@example.edu' );
+insert into professor (
+   p_id,
+   p_name,
+   p_major,
+   p_office,
+   p_phone,
+   p_pwd,
+   p_email
+) values ( 'P10003',
+           '오태민',
+           '경영학과',
+           '경영관302',
+           '02-2222-1003',
+           '1003',
+           'taemin.oh@example.edu' );
+insert into professor (
+   p_id,
+   p_name,
+   p_major,
+   p_office,
+   p_phone,
+   p_pwd,
+   p_email
+) values ( 'P10004',
+           '신은하',
+           '수학과',
+           '과학관215',
+           '02-2222-1004',
+           '1004',
+           'eunha.shin@example.edu' );
 
-INSERT INTO student (student_id, user_id, dept_id, name, year_level, enrollment_status, cum_gpa, total_credits, admission_year)
-VALUES (1, 1, 1, '김민지', 4, 'ENROLLED', 3.82, 96, 2023);
-INSERT INTO student (student_id, user_id, dept_id, name, year_level, enrollment_status, cum_gpa, total_credits, admission_year)
-VALUES (2, 2, 1, '이준호', 4, 'ENROLLED', 3.55, 91, 2023);
-INSERT INTO student (student_id, user_id, dept_id, name, year_level, enrollment_status, cum_gpa, total_credits, admission_year)
-VALUES (3, 3, 1, '박서연', 3, 'ENROLLED', 3.74, 65, 2024);
-INSERT INTO student (student_id, user_id, dept_id, name, year_level, enrollment_status, cum_gpa, total_credits, admission_year)
-VALUES (4, 4, 2, '최현우', 5, 'LEAVE', 3.21, 108, 2022);
-INSERT INTO student (student_id, user_id, dept_id, name, year_level, enrollment_status, cum_gpa, total_credits, admission_year)
-VALUES (5, 5, 3, '정유나', 6, 'ENROLLED', 3.95, 124, 2021);
+insert into user_account (
+   login_id,
+   password_hash,
+   role,
+   email,
+   phone,
+   is_active
+) values ( '20230001',
+           '0001',
+           'STUDENT',
+           'minji.kim@example.edu',
+           '010-1111-0001',
+           1 );
+insert into user_account (
+   login_id,
+   password_hash,
+   role,
+   email,
+   phone,
+   is_active
+) values ( '20230002',
+           '0002',
+           'STUDENT',
+           'junho.lee@example.edu',
+           '010-1111-0002',
+           1 );
+insert into user_account (
+   login_id,
+   password_hash,
+   role,
+   email,
+   phone,
+   is_active
+) values ( '20240001',
+           '0003',
+           'STUDENT',
+           'seoyeon.park@example.edu',
+           '010-1111-0003',
+           1 );
+insert into user_account (
+   login_id,
+   password_hash,
+   role,
+   email,
+   phone,
+   is_active
+) values ( '20220001',
+           '0004',
+           'STUDENT',
+           'hyunwoo.choi@example.edu',
+           '010-1111-0004',
+           0 );
+insert into user_account (
+   login_id,
+   password_hash,
+   role,
+   email,
+   phone,
+   is_active
+) values ( '20210001',
+           '0005',
+           'STUDENT',
+           'yuna.jung@example.edu',
+           '010-1111-0005',
+           1 );
+insert into user_account (
+   login_id,
+   password_hash,
+   role,
+   email,
+   phone,
+   is_active
+) values ( 'P10001',
+           '1001',
+           'PROFESSOR',
+           'jihoon.han@example.edu',
+           '02-2222-1001',
+           1 );
+insert into user_account (
+   login_id,
+   password_hash,
+   role,
+   email,
+   phone,
+   is_active
+) values ( 'P10002',
+           '1002',
+           'PROFESSOR',
+           'sora.kang@example.edu',
+           '02-2222-1002',
+           1 );
+insert into user_account (
+   login_id,
+   password_hash,
+   role,
+   email,
+   phone,
+   is_active
+) values ( 'P10003',
+           '1003',
+           'PROFESSOR',
+           'taemin.oh@example.edu',
+           '02-2222-1003',
+           1 );
+insert into user_account (
+   login_id,
+   password_hash,
+   role,
+   email,
+   phone,
+   is_active
+) values ( 'P10004',
+           '1004',
+           'PROFESSOR',
+           'eunha.shin@example.edu',
+           '02-2222-1004',
+           1 );
 
-INSERT INTO professor (professor_id, user_id, dept_id, name, title, office) VALUES (1, 6, 1, '한지훈', '교수', '소프트웨어관 501호');
-INSERT INTO student (student_id, user_id, dept_id, name, year_level, enrollment_status, cum_gpa, total_credits, admission_year)
-VALUES (6, 10, 1, '홍길동', 3, 'ENROLLED', 3.68, 54, 2024);
-INSERT INTO professor (professor_id, user_id, dept_id, name, title, office) VALUES (2, 7, 1, '강소라', '부교수', '소프트웨어관 407호');
-INSERT INTO professor (professor_id, user_id, dept_id, name, title, office) VALUES (3, 8, 2, '오태민', '조교수', '경영관 302호');
-INSERT INTO professor (professor_id, user_id, dept_id, name, title, office) VALUES (4, 9, 3, '신은하', '강사', '과학관 215호');
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 1,
+           'CSE1010',
+           '프로그래밍',
+           '강소라',
+           3,
+           'P10002',
+           '전공필수',
+           '컴퓨터과학과',
+           1,
+           0,
+           'Java 프로그래밍 입문',
+           5,
+           30,
+           30,
+           30,
+           10,
+           null,
+           '프로그래밍 기초 문법과 객체지향 개념을 학습합니다.' );
 
-INSERT INTO course (course_id, course_code, course_name, credits, course_type, dept_id, target_year, description, is_english)
-VALUES (1, 'CSE1010', '프로그래밍 입문', 3, 'MAJOR_REQUIRED', 1, 1, '문제 해결 실습을 통해 프로그래밍 기초를 학습합니다.', 0);
-INSERT INTO course (course_id, course_code, course_name, credits, course_type, dept_id, target_year, description, is_english)
-VALUES (2, 'CSE2010', '자료구조', 3, 'MAJOR_REQUIRED', 1, 2, '리스트, 트리, 그래프, 해싱과 알고리즘적 사고를 다룹니다.', 0);
-INSERT INTO course (course_id, course_code, course_name, credits, course_type, dept_id, target_year, description, is_english)
-VALUES (3, 'CSE3033', '데이터베이스 시스템', 3, 'MAJOR_REQUIRED', 1, 3, '관계형 모델링, SQL, 트랜잭션, 인덱싱을 학습합니다.', 0);
-INSERT INTO course (course_id, course_code, course_name, credits, course_type, dept_id, target_year, description, is_english)
-VALUES (4, 'CSE4050', '소프트웨어공학', 3, 'MAJOR_ELECTIVE', 1, 4, '요구사항, 아키텍처, 테스트, 팀 개발 방법을 다룹니다.', 1);
-INSERT INTO course (course_id, course_code, course_name, credits, course_type, dept_id, target_year, description, is_english)
-VALUES (5, 'CSE4077', '인공지능', 3, 'MAJOR_ELECTIVE', 1, 4, '탐색, 계획, 머신러닝 기초와 인공지능 응용을 학습합니다.', 1);
-INSERT INTO course (course_id, course_code, course_name, credits, course_type, dept_id, target_year, description, is_english)
-VALUES (6, 'BUS2100', '마케팅 원론', 3, 'MAJOR_REQUIRED', 2, 2, '마케팅 핵심 개념과 시장 분석 방법을 학습합니다.', 0);
-INSERT INTO course (course_id, course_code, course_name, credits, course_type, dept_id, target_year, description, is_english)
-VALUES (7, 'MATH2200', '선형대수학', 3, 'MAJOR_REQUIRED', 3, 2, '벡터공간, 행렬, 선형사상, 고윳값을 다룹니다.', 0);
-INSERT INTO course (course_id, course_code, course_name, credits, course_type, dept_id, target_year, description, is_english)
-VALUES (8, 'ENG1500', '대학영어', 2, 'LIBERAL_REQUIRED', 4, 1, '학술 독해, 작문, 발표 역량을 기릅니다.', 1);
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 2,
+           'CSE2010',
+           '자료구조',
+           '강소라',
+           3,
+           'P10002',
+           '전공필수',
+           '컴퓨터과학과',
+           2,
+           0,
+           '자료구조와 알고리즘',
+           6,
+           30,
+           30,
+           30,
+           10,
+           '프로그래밍',
+           '리스트, 스택, 큐, 트리, 그래프 등 기본 자료구조를 학습합니다.' );
 
-INSERT INTO prerequisite (prereq_id, course_id, required_course_id) VALUES (1, 2, 1);
-INSERT INTO prerequisite (prereq_id, course_id, required_course_id) VALUES (2, 3, 2);
-INSERT INTO prerequisite (prereq_id, course_id, required_course_id) VALUES (3, 4, 3);
-INSERT INTO prerequisite (prereq_id, course_id, required_course_id) VALUES (4, 5, 2);
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 3,
+           'CSE3033',
+           '데이터베이스',
+           '한지훈',
+           3,
+           'P10001',
+           '전공선택',
+           '컴퓨터과학과',
+           3,
+           0,
+           '데이터베이스 시스템',
+           5,
+           30,
+           30,
+           30,
+           10,
+           '자료구조',
+           'SQL, 정규화, 트랜잭션, PL/SQL 실습을 중심으로 학습합니다.' );
 
-INSERT INTO semester (semester_id, year, term, start_date, end_date, is_current)
-VALUES (1, 2025, 'FALL', TO_DATE('2025-09-01', 'YYYY-MM-DD'), TO_DATE('2025-12-19', 'YYYY-MM-DD'), 0);
-INSERT INTO semester (semester_id, year, term, start_date, end_date, is_current)
-VALUES (2, 2026, 'SPRING', TO_DATE('2026-03-02', 'YYYY-MM-DD'), TO_DATE('2026-06-19', 'YYYY-MM-DD'), 1);
-INSERT INTO semester (semester_id, year, term, start_date, end_date, is_current)
-VALUES (3, 2026, 'FALL', TO_DATE('2026-09-01', 'YYYY-MM-DD'), TO_DATE('2026-12-18', 'YYYY-MM-DD'), 0);
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 4,
+           'CSE4050',
+           '소공',
+           '한지훈',
+           3,
+           'P10001',
+           '전공선택',
+           '컴퓨터과학과',
+           4,
+           0,
+           '소프트웨어공학 개론',
+           4,
+           25,
+           35,
+           30,
+           10,
+           '프로그래밍',
+           '요구사항 분석, 설계, 구현, 테스트, 프로젝트 관리 방법을 학습합니다.' );
 
-INSERT INTO classroom (classroom_id, building, room_no, capacity, has_projector) VALUES (1, '소프트웨어관', '101', 40, 1);
-INSERT INTO classroom (classroom_id, building, room_no, capacity, has_projector) VALUES (2, '소프트웨어관', '203', 35, 1);
-INSERT INTO classroom (classroom_id, building, room_no, capacity, has_projector) VALUES (3, '소프트웨어관', '305', 60, 1);
-INSERT INTO classroom (classroom_id, building, room_no, capacity, has_projector) VALUES (4, '경영관', '201', 45, 1);
-INSERT INTO classroom (classroom_id, building, room_no, capacity, has_projector) VALUES (5, '과학관', '110', 50, 0);
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 5,
+           'CSE4077',
+           '인공지능',
+           '강소라',
+           3,
+           'P10002',
+           '전공선택',
+           '컴퓨터과학과',
+           4,
+           0,
+           '인공지능 개론',
+           4,
+           30,
+           30,
+           30,
+           10,
+           '자료구조',
+           '탐색, 지식표현, 머신러닝 기초 등 인공지능 핵심 개념을 학습합니다.' );
 
-INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (1, 3, 2, 1, '01', 35, 3, 'OPEN', 'https://example.edu/syllabus/CSE3033-2026S-01');
-INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (2, 4, 2, 1, '01', 30, 2, 'OPEN', 'https://example.edu/syllabus/CSE4050-2026S-01');
-INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (3, 5, 2, 2, '01', 40, 2, 'OPEN', 'https://example.edu/syllabus/CSE4077-2026S-01');
-INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (4, 2, 2, 2, '02', 40, 1, 'OPEN', 'https://example.edu/syllabus/CSE2010-2026S-02');
-INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (5, 6, 2, 3, '01', 45, 1, 'OPEN', 'https://example.edu/syllabus/BUS2100-2026S-01');
-INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (6, 7, 2, 4, '01', 50, 1, 'OPEN', 'https://example.edu/syllabus/MATH2200-2026S-01');
-INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (7, 8, 2, 4, '01', 25, 1, 'CLOSED', 'https://example.edu/syllabus/ENG1500-2026S-01');
-INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (8, 3, 1, 1, '01', 35, 2, 'OPEN', 'https://example.edu/syllabus/CSE3033-2025F-01');
-INSERT INTO course_section (section_id, course_id, semester_id, professor_id, section_no, capacity, enrolled_count, status, syllabus_url)
-VALUES (9, 1, 3, 2, '01', 45, 0, 'OPEN', 'https://example.edu/syllabus/CSE1010-2026F-01');
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 6,
+           'BUS2100',
+           '마케팅',
+           '오태민',
+           3,
+           'P10003',
+           '전공선택',
+           '경영학과',
+           2,
+           0,
+           '마케팅 원론',
+           3,
+           30,
+           30,
+           30,
+           10,
+           null,
+           '마케팅 기본 이론과 시장 분석, 소비자 행동을 학습합니다.' );
 
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (1, 1, 1, 'MON', '09:00', '10:15');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (2, 1, 1, 'WED', '09:00', '10:15');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (3, 2, 2, 'TUE', '10:30', '11:45');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (4, 2, 2, 'THU', '10:30', '11:45');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (5, 3, 3, 'MON', '13:00', '14:15');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (6, 3, 3, 'WED', '13:00', '14:15');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (7, 4, 1, 'FRI', '09:00', '11:50');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (8, 5, 4, 'TUE', '15:00', '17:45');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (9, 6, 5, 'MON', '10:30', '11:45');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (10, 6, 5, 'WED', '10:30', '11:45');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (11, 7, 2, 'SAT', '09:00', '11:30');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (12, 8, 1, 'TUE', '09:00', '10:15');
-INSERT INTO section_schedule (schedule_id, section_id, classroom_id, day_of_week, start_time, end_time) VALUES (13, 9, 3, 'MON', '15:00', '16:15');
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 7,
+           'MAT2200',
+           '선형대수',
+           '신은하',
+           3,
+           'P10004',
+           '전공선택',
+           '수학과',
+           2,
+           0,
+           '선형대수학',
+           5,
+           30,
+           30,
+           30,
+           10,
+           null,
+           '벡터, 행렬, 선형변환, 고유값과 고유벡터를 학습합니다.' );
 
-INSERT INTO registration_period (period_id, semester_id, period_type, target_year, start_at, end_at)
-VALUES (1, 2, 'CART', NULL, TO_TIMESTAMP('2026-02-02 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-02-06 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO registration_period (period_id, semester_id, period_type, target_year, start_at, end_at)
-VALUES (2, 2, 'MAIN', 4, TO_TIMESTAMP('2026-02-09 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-02-09 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO registration_period (period_id, semester_id, period_type, target_year, start_at, end_at)
-VALUES (3, 2, 'MAIN', 3, TO_TIMESTAMP('2026-02-10 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-02-10 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO registration_period (period_id, semester_id, period_type, target_year, start_at, end_at)
-VALUES (4, 2, 'ADD_DROP', NULL, TO_TIMESTAMP('2026-06-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-06-30 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO registration_period (period_id, semester_id, period_type, target_year, start_at, end_at)
-VALUES (5, 3, 'CART', NULL, TO_TIMESTAMP('2026-08-03 09:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-08-07 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 8,
+           'ENG1500',
+           '영어',
+           '신은하',
+           2,
+           'P10004',
+           '교양필수',
+           '교양',
+           1,
+           1,
+           '대학 영어',
+           4,
+           25,
+           25,
+           30,
+           20,
+           null,
+           '읽기, 쓰기, 발표를 중심으로 대학 영어 능력을 향상합니다.' );
 
-INSERT INTO cart_item (cart_id, student_id, section_id, added_at)
-VALUES (1, 1, 3, TO_TIMESTAMP('2026-02-03 10:10:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO cart_item (cart_id, student_id, section_id, added_at)
-VALUES (2, 2, 2, TO_TIMESTAMP('2026-02-03 10:12:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO cart_item (cart_id, student_id, section_id, added_at)
-VALUES (3, 3, 1, TO_TIMESTAMP('2026-02-04 16:45:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO cart_item (cart_id, student_id, section_id, added_at)
-VALUES (4, 5, 9, TO_TIMESTAMP('2026-08-04 11:20:00', 'YYYY-MM-DD HH24:MI:SS'));
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 9,
+           'CSE4090',
+           '고급DB',
+           '한지훈',
+           6,
+           'P10001',
+           '전공선택',
+           '컴퓨터과학과',
+           4,
+           0,
+           '고급 데이터베이스',
+           5,
+           30,
+           30,
+           30,
+           10,
+           '데이터베이스',
+           '트랜잭션, 인덱스, 튜닝, PL/SQL 고급 기능을 실습합니다.' );
 
-INSERT INTO course_request (request_id, student_id, section_id, reason, status, requested_at, processed_at, processed_by_professor_id)
-VALUES (1, 3, 2, '동등한 팀 프로젝트 과목을 이수했으며 이 분반에 참여하고 싶습니다.', 'PENDING', TO_TIMESTAMP('2026-03-03 14:10:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
-INSERT INTO course_request (request_id, student_id, section_id, reason, status, requested_at, processed_at, processed_by_professor_id)
-VALUES (2, 2, 3, '졸업 트랙 이수를 위해 이 과목이 필요하며 선수과목 내용을 따라갈 수 있습니다.', 'APPROVED', TO_TIMESTAMP('2026-03-01 11:20:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-03-01 16:30:00', 'YYYY-MM-DD HH24:MI:SS'), 2);
-INSERT INTO course_request (request_id, student_id, section_id, reason, status, requested_at, processed_at, processed_by_professor_id)
-VALUES (3, 4, 1, '휴학 후 복학하여 이번 학기에 데이터베이스 시스템을 수강해야 합니다.', 'REJECTED', TO_TIMESTAMP('2026-03-02 09:40:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-03-02 12:05:00', 'YYYY-MM-DD HH24:MI:SS'), 1);
-INSERT INTO course_request (request_id, student_id, section_id, reason, status, requested_at, processed_at, processed_by_professor_id)
-VALUES (4, 5, 5, '융합 전공 선택 과목으로 마케팅을 수강하고 싶습니다.', 'PENDING', TO_TIMESTAMP('2026-03-04 13:00:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
-INSERT INTO course_request (request_id, student_id, section_id, reason, status, requested_at, processed_at, processed_by_professor_id)
-VALUES (5, 1, 5, '프로덕트 매니지먼트 인턴십을 준비하고 있습니다.', 'APPROVED', TO_TIMESTAMP('2026-03-01 10:30:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-03-01 15:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3);
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 10,
+           'CSE4091',
+           '운영체제',
+           '강소라',
+           3,
+           'P10002',
+           '전공선택',
+           '컴퓨터과학과',
+           4,
+           0,
+           '운영체제 원리',
+           4,
+           30,
+           30,
+           30,
+           10,
+           '자료구조',
+           '데이터베이스 수업과 시간이 겹치도록 배치한 시간충돌 테스트 과목입니다.' );
 
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (1, 1, 1, 'ENROLLED', TO_TIMESTAMP('2026-02-09 09:12:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (2, 2, 1, 'ENROLLED', TO_TIMESTAMP('2026-02-09 09:15:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (3, 1, 2, 'ENROLLED', TO_TIMESTAMP('2026-02-09 09:40:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, '프로젝트 참여도가 높음.');
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (4, 2, 3, 'ENROLLED', TO_TIMESTAMP('2026-03-01 16:35:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, '수강 예외 승인.');
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (5, 3, 3, 'ENROLLED', TO_TIMESTAMP('2026-02-10 10:05:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (6, 3, 4, 'ENROLLED', TO_TIMESTAMP('2026-02-10 10:10:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (7, 1, 5, 'ENROLLED', TO_TIMESTAMP('2026-03-01 15:05:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, '융합 선택 과목.');
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (8, 5, 6, 'ENROLLED', TO_TIMESTAMP('2026-02-10 14:10:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (9, 5, 7, 'ENROLLED', TO_TIMESTAMP('2026-02-10 14:30:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (10, 4, 8, 'COMPLETED', TO_TIMESTAMP('2025-08-18 09:30:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, '휴학 전 이수 완료.');
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (11, 3, 1, 'DROPPED', TO_TIMESTAMP('2026-02-09 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-03-04 17:00:00', 'YYYY-MM-DD HH24:MI:SS'), '수강 정정 기간에 취소.');
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (12, 6, 1, 'ENROLLED', TO_TIMESTAMP('2026-03-04 09:20:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
-INSERT INTO enrollment (enrollment_id, student_id, section_id, status, enrolled_at, dropped_at, professor_note)
-VALUES (13, 6, 2, 'ENROLLED', TO_TIMESTAMP('2026-03-04 09:25:00', 'YYYY-MM-DD HH24:MI:SS'), NULL, NULL);
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 11,
+           'GEN2100',
+           '창의사고',
+           '신은하',
+           3,
+           'P10004',
+           '교양선택',
+           '교양',
+           2,
+           0,
+           '창의적 사고와 표현',
+           3,
+           25,
+           25,
+           30,
+           20,
+           null,
+           '15학점 상태에서 신청하면 18학점까지 정상 신청되는 교양선택 과목입니다.' );
 
-INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, rating_workload, rating_professor, difficulty, pros, cons, advice, is_anonymous, created_at)
-VALUES (1, 1, 5, 5, 4, 5, 'MEDIUM', '예제가 실용적이고 피드백이 빠릅니다.', '매주 과제가 있어 꾸준한 노력이 필요합니다.', 'SQL 프로젝트를 일찍 시작하세요.', 1, TO_TIMESTAMP('2026-05-15 12:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, rating_workload, rating_professor, difficulty, pros, cons, advice, is_anonymous, created_at)
-VALUES (2, 2, 4, 4, 3, 5, 'MEDIUM', '트랜잭션 설명이 명확합니다.', '일부 실습 시간이 깁니다.', '중간고사 전에 정규화를 복습하세요.', 0, TO_TIMESTAMP('2026-05-18 09:30:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, rating_workload, rating_professor, difficulty, pros, cons, advice, is_anonymous, created_at)
-VALUES (3, 3, 5, 5, 4, 5, 'HARD', '팀 프로젝트가 실제 개발과 비슷하게 느껴집니다.', '마일스톤 일정이 촘촘합니다.', '첫 주부터 회의록을 잘 남기세요.', 1, TO_TIMESTAMP('2026-05-20 16:10:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, rating_workload, rating_professor, difficulty, pros, cons, advice, is_anonymous, created_at)
-VALUES (4, 4, 4, 5, 5, 4, 'HARD', '인공지능 과제가 흥미롭습니다.', '수학 기초가 있으면 큰 도움이 됩니다.', '확률 기초를 다시 확인하세요.', 1, TO_TIMESTAMP('2026-05-22 10:20:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, rating_workload, rating_professor, difficulty, pros, cons, advice, is_anonymous, created_at)
-VALUES (5, 10, 4, 4, 3, 4, 'MEDIUM', '데이터베이스 프로젝트가 유용했습니다.', '시험 범위가 넓었습니다.', '쿼리 튜닝을 연습하세요.', 1, TO_TIMESTAMP('2025-12-10 11:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO review (review_id, enrollment_id, rating_overall, rating_content, rating_workload, rating_professor, difficulty, pros, cons, advice, is_anonymous, created_at)
-VALUES (6, 12, 5, 5, 4, 5, 'MEDIUM', '데이터 모델링 실습이 많아 좋았습니다.', '복습할 내용이 많습니다.', 'ERD와 SQL을 같이 정리하면 도움이 됩니다.', 1, TO_TIMESTAMP('2026-06-02 14:30:00', 'YYYY-MM-DD HH24:MI:SS'));
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 12,
+           'MAT3300',
+           '확률통계',
+           '신은하',
+           3,
+           'P10004',
+           '전공선택',
+           '수학과',
+           3,
+           0,
+           '확률과 통계',
+           4,
+           30,
+           30,
+           30,
+           10,
+           null,
+           '컴퓨터과학과 학생이 타학과 전공선택을 조회하고 과거 이수 데이터로 확인할 수 있습니다.' );
 
-INSERT INTO notification (notification_id, recipient_user_id, sender_user_id, target_section_id, target_request_id, title, body, type, is_read, created_at)
-VALUES (1, 6, 3, 2, 1, '새 수강 요청', '박서연 학생이 소프트웨어공학 수강을 요청했습니다.', 'COURSE_REQUEST', 0, TO_TIMESTAMP('2026-03-03 14:10:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO notification (notification_id, recipient_user_id, sender_user_id, target_section_id, target_request_id, title, body, type, is_read, created_at)
-VALUES (2, 2, 7, 3, 2, '수강 요청 승인', '인공지능 수강 요청이 승인되었습니다.', 'COURSE_REQUEST_RESULT', 1, TO_TIMESTAMP('2026-03-01 16:30:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO notification (notification_id, recipient_user_id, sender_user_id, target_section_id, target_request_id, title, body, type, is_read, created_at)
-VALUES (3, 4, 6, 1, 3, '수강 요청 반려', '데이터베이스 시스템 수강 요청이 반려되었습니다.', 'COURSE_REQUEST_RESULT', 0, TO_TIMESTAMP('2026-03-02 12:05:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO notification (notification_id, recipient_user_id, sender_user_id, target_section_id, target_request_id, title, body, type, is_read, created_at)
-VALUES (4, 6, 1, 1, NULL, '새 강의 평가', '학생이 데이터베이스 시스템 강의 평가를 등록했습니다.', 'COURSE_REVIEW', 0, TO_TIMESTAMP('2026-05-15 12:01:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO notification (notification_id, recipient_user_id, sender_user_id, target_section_id, target_request_id, title, body, type, is_read, created_at)
-VALUES (5, 6, 1, 2, NULL, '새 강의 평가', '학생이 소프트웨어공학 강의 평가를 등록했습니다.', 'COURSE_REVIEW', 0, TO_TIMESTAMP('2026-05-20 16:11:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO notification (notification_id, recipient_user_id, sender_user_id, target_section_id, target_request_id, title, body, type, is_read, created_at)
-VALUES (6, 1, 6, 1, NULL, '프로젝트 안내', '금요일까지 데이터베이스 프로젝트 제안서를 제출해 주세요.', 'PROFESSOR_MESSAGE', 0, TO_TIMESTAMP('2026-04-10 08:00:00', 'YYYY-MM-DD HH24:MI:SS'));
-INSERT INTO notification (notification_id, recipient_user_id, sender_user_id, target_section_id, target_request_id, title, body, type, is_read, created_at)
-VALUES (7, 5, NULL, NULL, NULL, '시스템 점검', '일요일 02:00-04:00에는 수강신청 시스템을 사용할 수 없습니다.', 'SYSTEM', 0, TO_TIMESTAMP('2026-05-25 09:00:00', 'YYYY-MM-DD HH24:MI:SS'));
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 13,
+           'BUS3300',
+           '재무관리',
+           '오태민',
+           3,
+           'P10003',
+           '전공선택',
+           '경영학과',
+           3,
+           0,
+           '재무관리 입문',
+           4,
+           30,
+           30,
+           30,
+           10,
+           null,
+           '경영학과 전공선택 조회와 과거 수강 이력 테스트에 사용합니다.' );
 
-COMMIT;
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 14,
+           'GEN2200',
+           '세계문화',
+           '오태민',
+           2,
+           'P10003',
+           '교양선택',
+           '교양',
+           1,
+           0,
+           '세계 문화의 이해',
+           2,
+           25,
+           25,
+           30,
+           20,
+           null,
+           '교양선택 필터와 과거 이수 데이터 테스트에 사용합니다.' );
+
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 15,
+           'CSE4092',
+           '네트워크',
+           '강소라',
+           3,
+           'P10002',
+           '전공선택',
+           '컴퓨터과학과',
+           4,
+           0,
+           '컴퓨터 네트워크',
+           4,
+           30,
+           30,
+           30,
+           10,
+           '운영체제',
+           '정원초과 테스트를 위해 분반 정원을 0명으로 둔 과목입니다.' );
+
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 16,
+           'CSE4093',
+           '컴파일러',
+           '한지훈',
+           3,
+           'P10001',
+           '전공선택',
+           '컴퓨터과학과',
+           4,
+           0,
+           '컴파일러 설계',
+           5,
+           30,
+           30,
+           30,
+           10,
+           '자료구조',
+           '18학점 도달 후 학점초과 테스트에 사용할 수 있는 전공선택 과목입니다.' );
+
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 17,
+           'CSE4094',
+           '보안',
+           '강소라',
+           3,
+           'P10002',
+           '전공선택',
+           '컴퓨터과학과',
+           4,
+           0,
+           '정보보안 개론',
+           4,
+           30,
+           30,
+           30,
+           10,
+           '네트워크',
+           '닫힌 분반 조회와 수강신청 실패 케이스를 확인하는 과목입니다.' );
+
+insert into lecture (
+   id,
+   no,
+   subject,
+   prof,
+   credit,
+   p_id,
+   course_type,
+   course_major,
+   target_year,
+   is_english,
+   textbook,
+   assignment_count,
+   midterm_rate,
+   final_rate,
+   assignment_rate,
+   attendance_rate,
+   prerequisite,
+   note
+) values ( 18,
+           'GEN2300',
+           '시민윤리',
+           '신은하',
+           2,
+           'P10004',
+           '교양선택',
+           '교양',
+           1,
+           0,
+           '시민 윤리와 사회',
+           2,
+           25,
+           25,
+           30,
+           20,
+           null,
+           '주말 교양선택 과목 조회 테스트에 사용합니다.' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10001',
+           'CSE3033',
+           1,
+           '명신관101',
+           35,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10001',
+           'CSE4050',
+           1,
+           '명신관203',
+           30,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10002',
+           'CSE4077',
+           1,
+           '명신관305',
+           40,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10002',
+           'CSE2010',
+           2,
+           '명신관101',
+           40,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10003',
+           'BUS2100',
+           1,
+           '경영관201',
+           45,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10004',
+           'MAT2200',
+           1,
+           '과학관110',
+           50,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10004',
+           'ENG1500',
+           1,
+           '명신관203',
+           25,
+           0,
+           'CLOSED' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10002',
+           'CSE1010',
+           1,
+           '명신관305',
+           45,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10001',
+           'CSE4090',
+           1,
+           '명신관401',
+           25,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10002',
+           'CSE4091',
+           1,
+           '명신관402',
+           30,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10004',
+           'GEN2100',
+           1,
+           '교양관201',
+           40,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10004',
+           'MAT3300',
+           1,
+           '과학관210',
+           35,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10003',
+           'BUS3300',
+           1,
+           '경영관301',
+           40,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10003',
+           'GEN2200',
+           1,
+           '교양관203',
+           40,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10002',
+           'CSE4092',
+           1,
+           '명신관403',
+           0,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10001',
+           'CSE4093',
+           1,
+           '명신관404',
+           30,
+           0,
+           'OPEN' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10002',
+           'CSE4094',
+           1,
+           '명신관405',
+           30,
+           0,
+           'CLOSED' );
+
+insert into class (
+   p_id,
+   c_id,
+   c_no,
+   c_where,
+   c_max,
+   c_now,
+   c_status
+) values ( 'P10004',
+           'GEN2300',
+           1,
+           '교양관205',
+           40,
+           0,
+           'OPEN' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 1,
+           'P10001',
+           'CSE3033',
+           1,
+           'MON',
+           '09:00',
+           '10:15' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 2,
+           'P10001',
+           'CSE3033',
+           1,
+           'WED',
+           '09:00',
+           '10:15' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 3,
+           'P10001',
+           'CSE4050',
+           1,
+           'TUE',
+           '10:30',
+           '11:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 4,
+           'P10001',
+           'CSE4050',
+           1,
+           'THU',
+           '10:30',
+           '11:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 5,
+           'P10002',
+           'CSE4077',
+           1,
+           'MON',
+           '13:00',
+           '14:15' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 6,
+           'P10002',
+           'CSE4077',
+           1,
+           'WED',
+           '13:00',
+           '14:15' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 7,
+           'P10002',
+           'CSE2010',
+           2,
+           'FRI',
+           '09:00',
+           '11:50' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 8,
+           'P10003',
+           'BUS2100',
+           1,
+           'TUE',
+           '15:00',
+           '17:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 9,
+           'P10004',
+           'MAT2200',
+           1,
+           'MON',
+           '10:30',
+           '11:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 10,
+           'P10004',
+           'MAT2200',
+           1,
+           'WED',
+           '10:30',
+           '11:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 11,
+           'P10004',
+           'ENG1500',
+           1,
+           'SAT',
+           '09:00',
+           '11:30' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 12,
+           'P10002',
+           'CSE1010',
+           1,
+           'MON',
+           '15:00',
+           '16:15' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 13,
+           'P10001',
+           'CSE4090',
+           1,
+           'FRI',
+           '13:00',
+           '17:50' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 14,
+           'P10002',
+           'CSE4091',
+           1,
+           'MON',
+           '09:30',
+           '10:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 15,
+           'P10004',
+           'GEN2100',
+           1,
+           'WED',
+           '15:00',
+           '17:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 16,
+           'P10004',
+           'MAT3300',
+           1,
+           'THU',
+           '13:00',
+           '15:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 17,
+           'P10003',
+           'BUS3300',
+           1,
+           'MON',
+           '18:00',
+           '20:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 18,
+           'P10003',
+           'GEN2200',
+           1,
+           'FRI',
+           '09:00',
+           '10:50' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 19,
+           'P10002',
+           'CSE4092',
+           1,
+           'THU',
+           '15:00',
+           '17:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 20,
+           'P10001',
+           'CSE4093',
+           1,
+           'TUE',
+           '18:00',
+           '20:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 21,
+           'P10002',
+           'CSE4094',
+           1,
+           'WED',
+           '18:00',
+           '20:45' );
+
+insert into class_time (
+   time_id,
+   p_id,
+   c_id,
+   c_no,
+   c_day,
+   c_start,
+   c_end
+) values ( 22,
+           'P10004',
+           'GEN2300',
+           1,
+           'SAT',
+           '13:00',
+           '14:50' );
+
+insert into registration_period (
+   period_id,
+   e_year,
+   e_semester,
+   period_type,
+   start_at,
+   end_at
+) values ( 1,
+           2026,
+           2,
+           'MAIN',
+           to_timestamp('2026-06-01 09:00:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           to_timestamp('2026-06-30 18:00:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+insert into registration_period (
+   period_id,
+   e_year,
+   e_semester,
+   period_type,
+   start_at,
+   end_at
+) values ( 2,
+           2026,
+           2,
+           'ADD_DROP',
+           to_timestamp('2026-06-22 09:00:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           to_timestamp('2026-06-26 18:00:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+insert into registration_period (
+   period_id,
+   e_year,
+   e_semester,
+   period_type,
+   start_at,
+   end_at
+) values ( 3,
+           2027,
+           1,
+           'MAIN',
+           to_timestamp('2026-12-01 09:00:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           to_timestamp('2026-12-19 18:00:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+insert into registration_period (
+   period_id,
+   e_year,
+   e_semester,
+   period_type,
+   start_at,
+   end_at
+) values ( 4,
+           2027,
+           1,
+           'ADD_DROP',
+           to_timestamp('2026-12-22 09:00:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           to_timestamp('2026-12-26 18:00:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+-- Trigger trg_enroll_class_count updates class.c_now for ENROLLED rows.
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 1,
+           '20230001',
+           'CSE3033',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-01 09:12:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           null );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 2,
+           '20230002',
+           'CSE3033',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-01 09:15:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           null );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 3,
+           '20230001',
+           'CSE4050',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-01 09:40:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           '프로젝트 참여도가 높음' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 4,
+           '20230002',
+           'CSE4077',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-02 16:35:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           '수강 예외 승인' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 5,
+           '20240001',
+           'CSE4077',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-02 10:05:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           null );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 6,
+           '20240001',
+           'CSE2010',
+           2,
+           2026,
+           2,
+           to_timestamp('2026-06-02 10:10:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           null );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 7,
+           '20230001',
+           'BUS2100',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-03 15:05:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           '교양 선택 과목' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 8,
+           '20210001',
+           'MAT2200',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-03 14:10:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           null );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 9,
+           '20210001',
+           'ENG1500',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-03 14:30:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           null );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 10,
+           '20220001',
+           'CSE3033',
+           1,
+           2025,
+           2,
+           to_timestamp('2025-08-18 09:30:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '재수강 불가' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 11,
+           '20240001',
+           'CSE3033',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-04 10:00:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'DROPPED',
+           to_timestamp('2026-06-05 17:00:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           '정정 기간 취소' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 12,
+           '20230001',
+           'CSE2010',
+           2,
+           2026,
+           1,
+           to_timestamp('2026-02-17 09:05:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '이전 학기 이수 완료' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 13,
+           '20230001',
+           'ENG1500',
+           1,
+           2026,
+           1,
+           to_timestamp('2026-02-17 09:18:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '교양필수 이수' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 14,
+           '20230002',
+           'CSE2010',
+           2,
+           2026,
+           1,
+           to_timestamp('2026-02-17 10:02:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '자료구조 과제 성실 제출' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 15,
+           '20240001',
+           'CSE1010',
+           1,
+           2026,
+           1,
+           to_timestamp('2026-02-18 11:30:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '프로그래밍 기초 이수' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 16,
+           '20230001',
+           'CSE1010',
+           1,
+           2025,
+           2,
+           to_timestamp('2025-08-18 09:10:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '기초 과목 선이수' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 17,
+           '20230002',
+           'MAT2200',
+           1,
+           2025,
+           2,
+           to_timestamp('2025-08-18 09:25:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '전공 기초 수학 이수' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 18,
+           '20230001',
+           'CSE4090',
+           1,
+           2026,
+           2,
+           to_timestamp('2026-06-06 13:10:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'ENROLLED',
+           null,
+           '고급 데이터베이스 테스트 수강' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 19,
+           '20230001',
+           'MAT3300',
+           1,
+           2024,
+           2,
+           to_timestamp('2024-09-02 10:05:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '타학과 전공선택 과거 이수' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 20,
+           '20230001',
+           'BUS3300',
+           1,
+           2024,
+           2,
+           to_timestamp('2024-09-03 13:15:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '경영학과 전공선택 과거 이수' );
+
+insert into enroll (
+   e_id,
+   s_id,
+   c_id,
+   c_no,
+   e_year,
+   e_semester,
+   e_date,
+   e_status,
+   e_drop_date,
+   professor_note
+) values ( 21,
+           '20230001',
+           'GEN2200',
+           1,
+           2024,
+           2,
+           to_timestamp('2024-09-04 09:20:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'COMPLETED',
+           null,
+           '교양선택 과거 이수' );
+
+insert into cart_item (
+   cart_id,
+   s_id,
+   c_id,
+   c_no,
+   added_at
+) values ( 1,
+           '20230001',
+           'CSE4077',
+           1,
+           to_timestamp('2026-05-28 10:10:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into cart_item (
+   cart_id,
+   s_id,
+   c_id,
+   c_no,
+   added_at
+) values ( 2,
+           '20230002',
+           'CSE4050',
+           1,
+           to_timestamp('2026-06-05 10:12:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into cart_item (
+   cart_id,
+   s_id,
+   c_id,
+   c_no,
+   added_at
+) values ( 3,
+           '20240001',
+           'CSE3033',
+           1,
+           to_timestamp('2026-06-04 16:45:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into cart_item (
+   cart_id,
+   s_id,
+   c_id,
+   c_no,
+   added_at
+) values ( 4,
+           '20210001',
+           'CSE1010',
+           1,
+           to_timestamp('2026-06-05 11:20:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into cart_item (
+   cart_id,
+   s_id,
+   c_id,
+   c_no,
+   added_at
+) values ( 5,
+           '20230001',
+           'CSE4091',
+           1,
+           to_timestamp('2026-06-06 09:30:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into cart_item (
+   cart_id,
+   s_id,
+   c_id,
+   c_no,
+   added_at
+) values ( 6,
+           '20230001',
+           'CSE4092',
+           1,
+           to_timestamp('2026-06-06 09:35:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into cart_item (
+   cart_id,
+   s_id,
+   c_id,
+   c_no,
+   added_at
+) values ( 7,
+           '20230001',
+           'GEN2100',
+           1,
+           to_timestamp('2026-06-06 09:40:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into course_request (
+   request_id,
+   s_id,
+   c_id,
+   c_no,
+   reason,
+   status,
+   requested_at,
+   processed_at,
+   processed_by_p_id
+) values ( 1,
+           '20240001',
+           'CSE4050',
+           1,
+           '소프트웨어공학 프로젝트 분반에 참여하고 싶습니다.',
+           'PENDING',
+           to_timestamp('2026-06-04 14:10:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           null,
+           null );
+
+insert into course_request (
+   request_id,
+   s_id,
+   c_id,
+   c_no,
+   reason,
+   status,
+   requested_at,
+   processed_at,
+   processed_by_p_id
+) values ( 2,
+           '20230002',
+           'CSE4077',
+           1,
+           '졸업 계획을 위해 인공지능 과목 수강이 필요합니다.',
+           'APPROVED',
+           to_timestamp('2026-06-03 11:20:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           to_timestamp('2026-06-03 16:30:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'P10002' );
+
+insert into course_request (
+   request_id,
+   s_id,
+   c_id,
+   c_no,
+   reason,
+   status,
+   requested_at,
+   processed_at,
+   processed_by_p_id
+) values ( 3,
+           '20220001',
+           'CSE3033',
+           1,
+           '복학 후 이번 학기에 데이터베이스 수강이 필요합니다.',
+           'REJECTED',
+           to_timestamp('2026-06-04 09:40:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           to_timestamp('2026-06-04 12:05:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           'P10001' );
+
+insert into course_request (
+   request_id,
+   s_id,
+   c_id,
+   c_no,
+   reason,
+   status,
+   requested_at,
+   processed_at,
+   processed_by_p_id
+) values ( 4,
+           '20210001',
+           'BUS2100',
+           1,
+           '연계 전공 선택 과목으로 마케팅을 수강하고 싶습니다.',
+           'PENDING',
+           to_timestamp('2026-06-05 13:00:00',
+                        'YYYY-MM-DD HH24:MI:SS'),
+           null,
+           null );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 1,
+           1,
+           5,
+           5,
+           4,
+           5,
+           'MEDIUM',
+           'SQL과 PL/SQL 실습이 유용합니다.',
+           '매주 과제가 있어 꾸준한 노력이 필요합니다.',
+           'SQL 프로젝트를 일찍 시작하세요.',
+           1,
+           to_timestamp('2026-03-12 12:00:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 2,
+           2,
+           4,
+           4,
+           3,
+           5,
+           'MEDIUM',
+           '트랜잭션 설명이 명확합니다.',
+           '실습 시간이 짧게 느껴집니다.',
+           '시험 전 정규화를 복습하세요.',
+           0,
+           to_timestamp('2026-04-03 09:30:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 3,
+           3,
+           5,
+           5,
+           4,
+           5,
+           'HARD',
+           '프로젝트가 실제 개발과 가깝습니다.',
+           '마감 일정이 빠듯할 수 있습니다.',
+           '첫 주부터 회의록을 남기세요.',
+           1,
+           to_timestamp('2026-03-28 16:10:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 4,
+           12,
+           4,
+           5,
+           4,
+           4,
+           'MEDIUM',
+           '자료구조 개념을 코드로 직접 구현해서 이해가 잘 됩니다.',
+           '과제 난이도가 뒤로 갈수록 높아집니다.',
+           '스택, 큐, 트리 구현 과제를 미리 복습하면 좋습니다.',
+           1,
+           to_timestamp('2026-06-21 14:20:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 5,
+           13,
+           4,
+           4,
+           2,
+           5,
+           'EASY',
+           '발표와 작문 피드백이 구체적입니다.',
+           '팀 활동 일정 조율이 필요합니다.',
+           '수업 전 짧은 발표문을 준비하면 참여하기 쉽습니다.',
+           0,
+           to_timestamp('2026-06-22 10:15:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 6,
+           14,
+           5,
+           5,
+           3,
+           5,
+           'MEDIUM',
+           '알고리즘 분석과 자료구조 선택 기준을 함께 설명해줍니다.',
+           '중간고사 범위가 넓습니다.',
+           '매주 실습 코드를 정리해두면 시험 준비가 수월합니다.',
+           1,
+           to_timestamp('2026-06-23 09:40:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 7,
+           15,
+           5,
+           4,
+           3,
+           5,
+           'EASY',
+           '프로그래밍을 처음 배우는 학생도 따라갈 수 있게 설명합니다.',
+           '실습실 환경 설정 시간이 조금 걸립니다.',
+           '첫 실습 전에 개발 도구 설치를 마쳐두면 좋습니다.',
+           1,
+           to_timestamp('2026-06-24 17:05:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 8,
+           16,
+           4,
+           4,
+           3,
+           4,
+           'MEDIUM',
+           '기초 문법부터 객체지향까지 흐름이 자연스럽습니다.',
+           '초반에는 진도가 빠르게 느껴질 수 있습니다.',
+           '복습용 예제를 직접 변형해보면 도움이 됩니다.',
+           0,
+           to_timestamp('2025-12-20 11:30:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 9,
+           17,
+           4,
+           4,
+           4,
+           4,
+           'HARD',
+           '행렬 계산과 증명을 균형 있게 다룹니다.',
+           '과제 풀이 시간이 오래 걸립니다.',
+           '수업 후 예제 풀이를 바로 정리하는 것이 좋습니다.',
+           1,
+           to_timestamp('2025-12-21 15:45:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 10,
+           19,
+           4,
+           4,
+           4,
+           5,
+           'MEDIUM',
+           '확률 개념을 예제로 반복해서 설명합니다.',
+           '계산 문제가 많아 복습 시간이 필요합니다.',
+           '공식보다 문제 유형을 먼저 정리하면 좋습니다.',
+           1,
+           to_timestamp('2024-12-20 14:10:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 11,
+           20,
+           3,
+           4,
+           3,
+           4,
+           'MEDIUM',
+           '비전공자도 재무제표 흐름을 이해할 수 있습니다.',
+           '용어가 낯설어 초반 진입장벽이 있습니다.',
+           '수업 전 용어 정리를 해두면 따라가기 쉽습니다.',
+           0,
+           to_timestamp('2024-12-21 10:30:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into review (
+   review_id,
+   e_id,
+   rating_overall,
+   rating_content,
+   rating_workload,
+   rating_professor,
+   difficulty,
+   pros,
+   cons,
+   advice,
+   is_anonymous,
+   created_at
+) values ( 12,
+           21,
+           5,
+           5,
+           2,
+           5,
+           'EASY',
+           '세계 문화 사례가 다양해서 흥미롭습니다.',
+           '팀 발표 일정 조율이 필요합니다.',
+           '발표 자료를 일찍 준비하면 부담이 적습니다.',
+           1,
+           to_timestamp('2024-12-22 16:45:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into notification (
+   notification_id,
+   recipient_p_id,
+   sender_s_id,
+   target_c_id,
+   target_c_no,
+   target_request_id,
+   title,
+   body,
+   type,
+   is_read,
+   created_at
+) values ( 1,
+           'P10001',
+           '20240001',
+           'CSE4050',
+           1,
+           1,
+           '새 수강 요청',
+           '학생이 소프트웨어공학 분반 수강을 요청했습니다.',
+           'COURSE_REQUEST',
+           0,
+           to_timestamp('2026-06-04 14:10:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into notification (
+   notification_id,
+   recipient_s_id,
+   sender_p_id,
+   target_c_id,
+   target_c_no,
+   target_request_id,
+   title,
+   body,
+   type,
+   is_read,
+   created_at
+) values ( 2,
+           '20230002',
+           'P10002',
+           'CSE4077',
+           1,
+           2,
+           '수강 요청 승인',
+           '인공지능 수강 요청이 승인되었습니다.',
+           'COURSE_REQUEST_RESULT',
+           1,
+           to_timestamp('2026-06-03 16:30:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into notification (
+   notification_id,
+   recipient_s_id,
+   sender_p_id,
+   target_c_id,
+   target_c_no,
+   target_request_id,
+   title,
+   body,
+   type,
+   is_read,
+   created_at
+) values ( 3,
+           '20220001',
+           'P10001',
+           'CSE3033',
+           1,
+           3,
+           '수강 요청 반려',
+           '데이터베이스 수강 요청이 반려되었습니다.',
+           'COURSE_REQUEST_RESULT',
+           0,
+           to_timestamp('2026-06-04 12:05:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into notification (
+   notification_id,
+   recipient_p_id,
+   sender_s_id,
+   target_c_id,
+   target_c_no,
+   title,
+   body,
+   type,
+   is_read,
+   created_at
+) values ( 4,
+           'P10001',
+           '20230001',
+           'CSE3033',
+           1,
+           '새 강의 평가',
+           '학생이 데이터베이스 강의 평가를 등록했습니다.',
+           'COURSE_REVIEW',
+           0,
+           to_timestamp('2026-03-12 12:01:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+insert into notification (
+   notification_id,
+   recipient_s_id,
+   title,
+   body,
+   type,
+   is_read,
+   created_at
+) values ( 5,
+           '20210001',
+           '시스템 공지',
+           '점검 시간에는 수강신청을 사용할 수 없습니다.',
+           'SYSTEM',
+           0,
+           to_timestamp('2026-06-01 09:00:00',
+                        'YYYY-MM-DD HH24:MI:SS') );
+
+alter table user_account modify user_id generated by default as identity ( start with limit value );
+alter table cart_item modify cart_id generated by default as identity ( start with limit value );
+alter table enroll modify e_id generated by default as identity ( start with limit value );
+alter table review modify review_id generated by default as identity ( start with limit value );
+
+commit;

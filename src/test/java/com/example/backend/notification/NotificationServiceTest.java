@@ -8,6 +8,7 @@ import com.example.backend.dto.notification.NotificationDetailResponse;
 import com.example.backend.dto.notification.NotificationItem;
 import com.example.backend.dto.notification.NotificationListResponse;
 import com.example.backend.mapper.NotificationMapper;
+import com.example.backend.security.AuthenticatedUser;
 import com.example.backend.service.NotificationService;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,12 +36,13 @@ class NotificationServiceTest {
             "COURSE_REQUEST",
             false,
             "2026-06-01 09:30",
-            "201",
+            "CSE3033",
+            "1분반",
             "301"));
 
-    NotificationListResponse response = notificationService.getNotifications(10L);
+    NotificationListResponse response = notificationService.getNotifications(studentUser());
 
-    assertThat(notificationMapper.requestedRecipientUserId).isEqualTo(10L);
+    assertThat(notificationMapper.requestedStudentId).isEqualTo("20230001");
     assertThat(response.notifications()).hasSize(1);
     assertThat(response.notifications().get(0).notificationId()).isEqualTo("7");
     assertThat(response.notifications().get(0).isRead()).isFalse();
@@ -48,9 +50,9 @@ class NotificationServiceTest {
 
   @Test
   void markAsReadUpdatesOnlyCurrentUserNotification() {
-    notificationService.markAsRead(10L, "7");
+    notificationService.markAsRead(studentUser(), "7");
 
-    assertThat(notificationMapper.requestedRecipientUserId).isEqualTo(10L);
+    assertThat(notificationMapper.requestedStudentId).isEqualTo("20230001");
     assertThat(notificationMapper.requestedNotificationId).isEqualTo("7");
   }
 
@@ -68,13 +70,14 @@ class NotificationServiceTest {
             "CSE301",
             "데이터베이스개론",
             "01분반",
-            "201",
+            "CSE3033",
+            "1분반",
             "301",
             "전공 필수 과목으로 수강이 필요합니다.");
 
-    NotificationDetailResponse response = notificationService.getNotification(10L, "7");
+    NotificationDetailResponse response = notificationService.getNotification(studentUser(), "7");
 
-    assertThat(notificationMapper.requestedRecipientUserId).isEqualTo(10L);
+    assertThat(notificationMapper.requestedStudentId).isEqualTo("20230001");
     assertThat(notificationMapper.requestedNotificationId).isEqualTo("7");
     assertThat(response.senderName()).isEqualTo("홍길동");
     assertThat(response.courseName()).isEqualTo("데이터베이스개론");
@@ -83,7 +86,7 @@ class NotificationServiceTest {
 
   @Test
   void getNotificationRejectsMissingOrOtherUserNotification() {
-    assertThatThrownBy(() -> notificationService.getNotification(10L, "404"))
+    assertThatThrownBy(() -> notificationService.getNotification(studentUser(), "404"))
         .isInstanceOfSatisfying(
             NotificationHandler.class,
             exception ->
@@ -92,28 +95,32 @@ class NotificationServiceTest {
   }
 
   private static class FakeNotificationMapper implements NotificationMapper {
-    private Long requestedRecipientUserId;
+    private String requestedStudentId;
     private String requestedNotificationId;
     private final List<NotificationItem> notifications = new ArrayList<>();
     private NotificationDetailResponse detail;
 
     @Override
-    public List<NotificationItem> findNotifications(Long recipientUserId) {
-      requestedRecipientUserId = recipientUserId;
+    public List<NotificationItem> findNotifications(String studentId) {
+      requestedStudentId = studentId;
       return notifications;
     }
 
     @Override
-    public NotificationDetailResponse findNotification(Long recipientUserId, String notificationId) {
-      requestedRecipientUserId = recipientUserId;
+    public NotificationDetailResponse findNotification(String studentId, String notificationId) {
+      requestedStudentId = studentId;
       requestedNotificationId = notificationId;
       return detail;
     }
 
     @Override
-    public void markAsRead(Long recipientUserId, String notificationId) {
-      requestedRecipientUserId = recipientUserId;
+    public void markAsRead(String studentId, String notificationId) {
+      requestedStudentId = studentId;
       requestedNotificationId = notificationId;
     }
+  }
+
+  private AuthenticatedUser studentUser() {
+    return new AuthenticatedUser(10L, "20230001", "STUDENT");
   }
 }

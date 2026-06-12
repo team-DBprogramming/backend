@@ -7,8 +7,8 @@ public final class OpenApiExamples {
   public static final String LOGIN_REQUEST =
       """
       {
-        "userId": "2024123456",
-        "password": "1234",
+        "userId": "20230001",
+        "password": "0001",
         "rememberMe": true
       }
       """;
@@ -26,10 +26,10 @@ public final class OpenApiExamples {
           "refreshTokenExpiresAt": "2026-06-08T10:00:00Z",
           "user": {
             "id": "u_1",
-            "userId": "2024123456",
-            "name": "홍길동",
-            "role": "student",
-            "department": "computer-science"
+            "userId": "20230001",
+            "name": "김민지",
+            "role": "STUDENT",
+            "department": "컴퓨터과학과"
           }
         }
       }

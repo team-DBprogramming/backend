@@ -7,7 +7,6 @@
   <resultMap id="CourseSummaryResultMap" type="com.example.backend.dto.student.StudentCourseSummary">
     <result property="courseId" column="course_id" />
     <result property="courseName" column="course_name" />
-    <result property="courseCode" column="course_code" />
     <result property="professor" column="professor" />
     <result property="division" column="division" />
     <result property="courseType" column="course_type" />
@@ -38,148 +37,136 @@
     <result property="createdAt" column="created_at" />
   </resultMap>
 
-  <sql id="currentSemesterCondition">
-    sm.is_current = 1
+  <sql id="divisionCondition">
+    (#{division} IS NULL OR TO_CHAR(c.c_no) = #{division})
   </sql>
 
-  <sql id="semesterParamCondition">
-    TO_CHAR(sm.year) || '-' ||
-      CASE sm.term
-        WHEN 'SPRING' THEN '1'
-        WHEN 'FALL' THEN '2'
-        ELSE sm.term
-      END || '학기' = #{semester}
+  <sql id="courseColumns">
+    l.no AS course_id,
+    l.subject AS course_name,
+    COALESCE(p.p_name, l.prof) AS professor,
+    TO_CHAR(c.c_no) || '분반' AS division,
+    l.course_type,
+    l.credit,
+    c.c_where AS room,
+    c.c_max AS capacity,
+    c.c_now AS enrolled,
+    (SELECT COUNT(*) FROM cart_item ci WHERE ci.c_id = c.c_id AND ci.c_no = c.c_no) AS cart_count,
+    (
+      SELECT ROUND(AVG(r.rating_overall), 1)
+      FROM enroll e
+      JOIN review r ON r.e_id = e.e_id
+      WHERE e.c_id = c.c_id
+        AND e.c_no = c.c_no
+    ) AS rating,
+    (
+      SELECT COUNT(*)
+      FROM enroll e
+      JOIN review r ON r.e_id = e.e_id
+      WHERE e.c_id = c.c_id
+        AND e.c_no = c.c_no
+    ) AS review_count,
+    CASE WHEN l.is_english = 1 THEN 1 ELSE 0 END AS is_english,
+    CASE
+      WHEN c.c_now >= c.c_max THEN 'FULL'
+      WHEN c.c_max - c.c_now <![CDATA[<=]]> 5 THEN 'CLOSING_SOON'
+      ELSE 'AVAILABLE'
+    END AS seat_status,
+    TO_CHAR(l.target_year) AS year
   </sql>
 
-  <sql id="courseBase">
-    SELECT
-      c.course_code AS course_id,
-      c.course_name,
-      c.course_code,
-      p.name AS professor,
-      cs.section_no || '분반' AS division,
-      c.course_type,
-      c.credits AS credit,
-      (
-        SELECT LISTAGG(ss.day_of_week || ' ' || ss.start_time || '-' || ss.end_time, ', ')
-          WITHIN GROUP (ORDER BY ss.day_of_week, ss.start_time)
-        FROM section_schedule ss
-        WHERE ss.section_id = cs.section_id
-      ) AS schedule,
-      (
-        SELECT LISTAGG(cr.building || ' ' || cr.room_no, ', ')
-          WITHIN GROUP (ORDER BY cr.building || ' ' || cr.room_no)
-        FROM section_schedule ss
-        JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-        WHERE ss.section_id = cs.section_id
-      ) AS room,
-      cs.capacity,
-      COALESCE(cs.enrolled_count, 0) AS enrolled,
-      (
-        SELECT COUNT(*)
-        FROM cart_item ci
-        WHERE ci.section_id = cs.section_id
-      ) AS cart_count,
-      (
-        SELECT ROUND(AVG(r.rating_overall), 1)
-        FROM enrollment e
-        JOIN review r ON r.enrollment_id = e.enrollment_id
-        WHERE e.section_id = cs.section_id
-      ) AS rating,
-      (
-        SELECT COUNT(*)
-        FROM enrollment e
-        JOIN review r ON r.enrollment_id = e.enrollment_id
-        WHERE e.section_id = cs.section_id
-      ) AS review_count,
-      CASE WHEN c.is_english = 1 THEN 1 ELSE 0 END AS is_english,
-      CASE
-        WHEN COALESCE(cs.enrolled_count, 0) >= cs.capacity THEN 'FULL'
-        WHEN cs.capacity - COALESCE(cs.enrolled_count, 0) <![CDATA[<=]]> 5 THEN 'CLOSING_SOON'
-        ELSE 'AVAILABLE'
-      END AS seat_status,
-      TO_CHAR(c.target_year) AS year
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN department d ON d.dept_id = c.dept_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE cs.status != 'CANCELLED'
-      AND <include refid="semesterParamCondition" />
+  <sql id="courseFrom">
+    FROM class c
+    JOIN lecture l ON l.no = c.c_id
+    LEFT JOIN professor p ON p.p_id = COALESCE(c.p_id, l.p_id)
+    WHERE c.c_status != 'CANCELLED'
   </sql>
 
   <sql id="courseFilters">
     AND (
       #{keyword} IS NULL
-      OR LOWER(c.course_name) LIKE '%' || LOWER(#{keyword}) || '%'
-      OR LOWER(c.course_code) LIKE '%' || LOWER(#{keyword}) || '%'
-      OR LOWER(p.name) LIKE '%' || LOWER(#{keyword}) || '%'
+      OR LOWER(l.subject) LIKE '%' || LOWER(#{keyword}) || '%'
+      OR LOWER(l.no) LIKE '%' || LOWER(#{keyword}) || '%'
+      OR LOWER(COALESCE(p.p_name, l.prof)) LIKE '%' || LOWER(#{keyword}) || '%'
     )
-    AND (
-      #{courseCategory} IS NULL
-      OR LOWER(c.course_type) LIKE '%' || LOWER(#{courseCategory}) || '%'
-    )
-    AND (#{major} IS NULL OR LOWER(d.dept_name) LIKE '%' || LOWER(#{major}) || '%')
-    AND (#{courseType} IS NULL OR c.course_type = #{courseType})
+    AND (#{courseMajor} IS NULL OR LOWER(l.course_major) LIKE '%' || LOWER(#{courseMajor}) || '%')
+    AND (#{courseType} IS NULL OR l.course_type = #{courseType})
+    AND (#{targetYear} IS NULL OR l.target_year = #{targetYear})
+    <if test="isEnglish != null">
+      AND l.is_english =
+      <choose>
+        <when test="isEnglish">1</when>
+        <otherwise>0</otherwise>
+      </choose>
+    </if>
+    <if test="hasSeatMargin != null and hasSeatMargin">
+      AND c.c_now <![CDATA[<]]> c.c_max
+    </if>
     <if test="credits != null and credits.size() > 0">
-      AND c.credits IN
+      AND l.credit IN
       <foreach collection="credits" item="credit" open="(" separator="," close=")">
         #{credit}
       </foreach>
     </if>
-    AND (
-      <choose>
-        <when test="days != null and days.size() > 0">
-          EXISTS (
-            SELECT 1
-            FROM section_schedule fss
-            WHERE fss.section_id = cs.section_id
-              AND fss.day_of_week IN
-              <foreach collection="days" item="day" open="(" separator="," close=")">
-                #{day}
-              </foreach>
-          )
-        </when>
-        <otherwise>
-          1 = 1
-        </otherwise>
-      </choose>
-    )
+    <if test="days != null and days.size() > 0">
+      AND EXISTS (
+        SELECT 1
+        FROM class_time fct
+        WHERE fct.c_id = c.c_id
+          AND fct.c_no = c.c_no
+          AND fct.c_day IN
+          <foreach collection="days" item="day" open="(" separator="," close=")">
+            #{day}
+          </foreach>
+      )
+    </if>
     AND (
       #{startTime} IS NULL
       OR EXISTS (
         SELECT 1
-        FROM section_schedule fss
-        WHERE fss.section_id = cs.section_id
-          AND fss.start_time >= #{startTime}
+        FROM class_time fct
+        WHERE fct.c_id = c.c_id
+          AND fct.c_no = c.c_no
+          AND fct.c_start >= #{startTime}
       )
     )
     AND (
       #{endTime} IS NULL
       OR EXISTS (
         SELECT 1
-        FROM section_schedule fss
-        WHERE fss.section_id = cs.section_id
-          AND fss.end_time <![CDATA[<=]]> #{endTime}
+        FROM class_time fct
+        WHERE fct.c_id = c.c_id
+          AND fct.c_no = c.c_no
+          AND fct.c_end <![CDATA[<=]]> #{endTime}
       )
     )
+    <if test="highReview != null and highReview">
+      AND (
+        SELECT AVG(r.rating_overall)
+        FROM enroll e
+        JOIN review r ON r.e_id = e.e_id
+        WHERE e.c_id = c.c_id
+          AND e.c_no = c.c_no
+      ) >= 4
+    </if>
   </sql>
 
   <select id="findCourses" resultMap="CourseSummaryResultMap">
-    <include refid="courseBase" />
+    SELECT <include refid="courseColumns" />
+    <include refid="courseFrom" />
     <include refid="courseFilters" />
     <choose>
       <when test="sort == 'RATING'">
-        ORDER BY rating DESC NULLS LAST, c.course_name, cs.section_no
+        ORDER BY rating DESC NULLS LAST, l.subject, c.c_no
       </when>
       <when test="sort == 'POPULAR'">
-        ORDER BY cart_count DESC, c.course_name, cs.section_no
+        ORDER BY cart_count DESC, l.subject, c.c_no
       </when>
       <when test="sort == 'SEATS'">
-        ORDER BY (cs.capacity - COALESCE(cs.enrolled_count, 0)) DESC, c.course_name, cs.section_no
+        ORDER BY (c.c_max - c.c_now) DESC, l.subject, c.c_no
       </when>
       <otherwise>
-        ORDER BY c.course_name, cs.section_no
+        ORDER BY l.subject, c.c_no
       </otherwise>
     </choose>
     OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
@@ -187,204 +174,150 @@
 
   <select id="countCourses" resultType="int">
     SELECT COUNT(*)
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN department d ON d.dept_id = c.dept_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE cs.status != 'CANCELLED'
-      AND <include refid="semesterParamCondition" />
+    <include refid="courseFrom" />
     <include refid="courseFilters" />
   </select>
 
   <select id="findCourse" resultMap="CourseSummaryResultMap">
-    SELECT
-      c.course_code AS course_id,
-      c.course_name,
-      c.course_code,
-      p.name AS professor,
-      cs.section_no || '분반' AS division,
-      c.course_type,
-      c.credits AS credit,
-      (
-        SELECT LISTAGG(ss.day_of_week || ' ' || ss.start_time || '-' || ss.end_time, ', ')
-          WITHIN GROUP (ORDER BY ss.day_of_week, ss.start_time)
-        FROM section_schedule ss
-        WHERE ss.section_id = cs.section_id
-      ) AS schedule,
-      (
-        SELECT LISTAGG(cr.building || ' ' || cr.room_no, ', ')
-          WITHIN GROUP (ORDER BY cr.building || ' ' || cr.room_no)
-        FROM section_schedule ss
-        JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-        WHERE ss.section_id = cs.section_id
-      ) AS room,
-      cs.capacity,
-      COALESCE(cs.enrolled_count, 0) AS enrolled,
-      (
-        SELECT COUNT(*)
-        FROM cart_item ci
-        WHERE ci.section_id = cs.section_id
-      ) AS cart_count,
-      (
-        SELECT ROUND(AVG(r.rating_overall), 1)
-        FROM enrollment e
-        JOIN review r ON r.enrollment_id = e.enrollment_id
-        WHERE e.section_id = cs.section_id
-      ) AS rating,
-      (
-        SELECT COUNT(*)
-        FROM enrollment e
-        JOIN review r ON r.enrollment_id = e.enrollment_id
-        WHERE e.section_id = cs.section_id
-      ) AS review_count,
-      CASE WHEN c.is_english = 1 THEN 1 ELSE 0 END AS is_english,
-      CASE
-        WHEN COALESCE(cs.enrolled_count, 0) >= cs.capacity THEN 'FULL'
-        WHEN cs.capacity - COALESCE(cs.enrolled_count, 0) <![CDATA[<=]]> 5 THEN 'CLOSING_SOON'
-        ELSE 'AVAILABLE'
-      END AS seat_status,
-      TO_CHAR(c.target_year) AS year
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE cs.status != 'CANCELLED'
-      AND <include refid="currentSemesterCondition" />
-      AND c.course_code = #{courseId}
-      AND (#{division} IS NULL OR cs.section_no = #{division})
-    ORDER BY cs.section_no
+    SELECT <include refid="courseColumns" />
+    <include refid="courseFrom" />
+      AND l.no = #{courseId}
+      AND <include refid="divisionCondition" />
+    ORDER BY c.c_no
     FETCH FIRST 1 ROW ONLY
+  </select>
+
+  <select id="findCourseDetailFields" resultType="java.util.HashMap">
+    SELECT
+      textbook,
+      assignment_count,
+      midterm_rate,
+      final_rate,
+      assignment_rate,
+      attendance_rate,
+      prerequisite,
+      note
+    FROM lecture
+    WHERE no = #{courseId}
   </select>
 
   <select id="findDescription" resultType="string">
-    SELECT c.description
-    FROM course c
-    WHERE c.course_code = #{courseId}
+    SELECT note
+    FROM lecture
+    WHERE no = #{courseId}
   </select>
 
   <select id="findSyllabusUrl" resultType="string">
-    SELECT cs.syllabus_url
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE c.course_code = #{courseId}
-      AND <include refid="currentSemesterCondition" />
-      AND (#{division} IS NULL OR cs.section_no = #{division})
-    ORDER BY cs.section_no
+    SELECT textbook
+    FROM lecture
+    WHERE no = #{courseId}
+  </select>
+
+  <select id="findProfessorEmail" resultType="string">
+    SELECT p.p_email
+    FROM class c
+    JOIN lecture l ON l.no = c.c_id
+    LEFT JOIN professor p ON p.p_id = COALESCE(c.p_id, l.p_id)
+    WHERE l.no = #{courseId}
+      AND <include refid="divisionCondition" />
+    ORDER BY c.c_no
     FETCH FIRST 1 ROW ONLY
+  </select>
+
+  <select id="findProfessorPhone" resultType="string">
+    SELECT p.p_phone
+    FROM class c
+    JOIN lecture l ON l.no = c.c_id
+    LEFT JOIN professor p ON p.p_id = COALESCE(c.p_id, l.p_id)
+    WHERE l.no = #{courseId}
+      AND <include refid="divisionCondition" />
+    ORDER BY c.c_no
+    FETCH FIRST 1 ROW ONLY
+  </select>
+
+  <select id="findPrerequisite" resultType="string">
+    SELECT prerequisite
+    FROM lecture
+    WHERE no = #{courseId}
   </select>
 
   <select id="findSchedules" resultMap="CourseScheduleResultMap">
     SELECT
-      ss.day_of_week,
-      ss.start_time,
-      ss.end_time,
-      cr.building || ' ' || cr.room_no AS room
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN section_schedule ss ON ss.section_id = cs.section_id
-    JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-    WHERE c.course_code = #{courseId}
-      AND <include refid="currentSemesterCondition" />
-      AND (#{division} IS NULL OR cs.section_no = #{division})
-    ORDER BY ss.day_of_week, ss.start_time
+      ct.c_day AS day_of_week,
+      ct.c_start AS start_time,
+      ct.c_end AS end_time,
+      c.c_where AS room
+    FROM class c
+    JOIN class_time ct ON ct.c_id = c.c_id AND ct.c_no = c.c_no
+    WHERE c.c_id = #{courseId}
+      AND <include refid="divisionCondition" />
+    ORDER BY
+      CASE ct.c_day
+        WHEN 'MON' THEN 1
+        WHEN 'TUE' THEN 2
+        WHEN 'WED' THEN 3
+        WHEN 'THU' THEN 4
+        WHEN 'FRI' THEN 5
+        WHEN 'SAT' THEN 6
+        ELSE 7
+      END,
+      ct.c_start
   </select>
 
   <select id="findCourseReviews" resultMap="CourseReviewResultMap">
     SELECT
       r.rating_overall AS rating,
-      CASE r.difficulty
-        WHEN 'MEDIUM' THEN 'NORMAL'
-        ELSE r.difficulty
-      END AS difficulty,
-      COALESCE(r.pros, r.advice) AS review_comment,
-      TO_CHAR(sm.year) || '-' ||
-        CASE sm.term
-          WHEN 'SPRING' THEN '1'
-          WHEN 'FALL' THEN '2'
-          ELSE sm.term
-        END || '학기' AS semester,
+      CASE r.difficulty WHEN 'MEDIUM' THEN 'NORMAL' ELSE r.difficulty END AS difficulty,
+      COALESCE(DBMS_LOB.SUBSTR(r.pros, 4000, 1), DBMS_LOB.SUBSTR(r.advice, 4000, 1)) AS review_comment,
+      TO_CHAR(e.e_year) || '-' || TO_CHAR(e.e_semester) AS semester,
       TO_CHAR(r.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
     FROM review r
-    JOIN enrollment e ON e.enrollment_id = r.enrollment_id
-    JOIN course_section cs ON cs.section_id = e.section_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN course c ON c.course_id = cs.course_id
-    WHERE c.course_code = #{courseId}
-      AND (#{division} IS NULL OR cs.section_no = #{division})
+    JOIN enroll e ON e.e_id = r.e_id
+    WHERE e.c_id = #{courseId}
+      AND (#{division} IS NULL OR TO_CHAR(e.c_no) = #{division})
     ORDER BY r.created_at DESC
   </select>
 
-  <select id="findProfessorEmail" resultType="string">
-    SELECT ua.email
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN user_account ua ON ua.user_id = p.user_id
-    WHERE c.course_code = #{courseId}
-      AND <include refid="currentSemesterCondition" />
-      AND (#{division} IS NULL OR cs.section_no = #{division})
-    ORDER BY cs.section_no
-    FETCH FIRST 1 ROW ONLY
-  </select>
-
-  <select id="findProfessorPhone" resultType="string">
-    SELECT ua.phone
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN user_account ua ON ua.user_id = p.user_id
-    WHERE c.course_code = #{courseId}
-      AND <include refid="currentSemesterCondition" />
-      AND (#{division} IS NULL OR cs.section_no = #{division})
-    ORDER BY cs.section_no
-    FETCH FIRST 1 ROW ONLY
-  </select>
-
-  <select id="findPrerequisite" resultType="string">
-    SELECT rc.course_code
-    FROM prerequisite pr
-    JOIN course c ON c.course_id = pr.course_id
-    JOIN course rc ON rc.course_id = pr.required_course_id
-    WHERE c.course_code = #{courseId}
-    ORDER BY rc.course_code
-    FETCH FIRST 1 ROW ONLY
-  </select>
-
-  <select id="findStudentId" resultType="long">
-    SELECT s.student_id
-    FROM student s
-    WHERE s.user_id = #{userId}
-  </select>
-
   <select id="findSectionId" resultType="long">
-    SELECT cs.section_id
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE c.course_code = #{courseId}
-      AND cs.status != 'CANCELLED'
-      AND <include refid="currentSemesterCondition" />
-      AND (#{division} IS NULL OR cs.section_no = #{division})
-    ORDER BY cs.section_no
+    SELECT c.c_no
+    FROM class c
+    WHERE c.c_id = #{courseId}
+      AND c.c_status != 'CANCELLED'
+      AND <include refid="divisionCondition" />
+    ORDER BY c.c_no
     FETCH FIRST 1 ROW ONLY
   </select>
 
-  <insert id="insertBorrowRequest">
-    INSERT INTO course_request (student_id, section_id, reason, status, requested_at)
-    VALUES (#{studentId}, #{sectionId}, #{reason}, 'PENDING', SYSTIMESTAMP)
-  </insert>
+  <select id="countCurrentEnrollment" resultType="int">
+    SELECT COUNT(*)
+    FROM enroll e
+    WHERE e.s_id = #{studentId}
+      AND e.c_id = #{courseId}
+      AND (#{division} IS NULL OR TO_CHAR(e.c_no) = #{division})
+      AND e.e_year = Date2EnrollYear(SYSDATE)
+      AND e.e_semester = Date2EnrollSemester(SYSDATE)
+      AND e.e_status = 'ENROLLED'
+  </select>
 
-  <select id="findLatestBorrowRequestId" resultType="long">
-    SELECT request_id
-    FROM course_request
-    WHERE student_id = #{studentId}
-      AND section_id = #{sectionId}
-    ORDER BY requested_at DESC
+  <select id="findBorrowRequestStatus" resultType="string">
+    SELECT status
+    FROM course_request cr
+    WHERE cr.s_id = #{studentId}
+      AND cr.c_id = #{courseId}
+      AND (#{division} IS NULL OR TO_CHAR(cr.c_no) = #{division})
+    ORDER BY cr.requested_at DESC
     FETCH FIRST 1 ROW ONLY
   </select>
+
+  <select id="callInsertBorrowRequest" statementType="CALLABLE" parameterType="map">
+    { CALL INSERT_BORROW_REQUEST(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{courseId, mode=IN, jdbcType=VARCHAR},
+      #{sectionId, mode=IN, jdbcType=NUMERIC},
+      #{reason, mode=IN, jdbcType=VARCHAR},
+      #{requestId, mode=OUT, jdbcType=VARCHAR},
+      #{result, mode=OUT, jdbcType=VARCHAR}
+    ) }
+  </select>
+
 </mapper>

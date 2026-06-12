@@ -40,179 +40,67 @@
     <result property="room" column="room" />
   </resultMap>
 
-  <select id="findStudentId" resultType="long">
-    SELECT student_id FROM student WHERE user_id = #{userId}
-  </select>
-
   <select id="findSectionId" resultType="long">
-    SELECT cs.section_id
-    FROM course_section cs
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE c.course_code = #{courseId}
-      AND sm.is_current = 1
-      AND cs.status != 'CANCELLED'
-      AND (#{division} IS NULL OR cs.section_no = #{division})
-    ORDER BY cs.section_no
+    SELECT c_no
+    FROM class
+    WHERE c_id = #{courseId}
+      AND c_status != 'CANCELLED'
+      AND (#{division} IS NULL OR TO_CHAR(c_no) = #{division})
+    ORDER BY c_no
     FETCH FIRST 1 ROW ONLY
   </select>
 
-  <insert id="insertEnrollment">
-    INSERT INTO enrollment (student_id, section_id, status, enrolled_at)
-    VALUES (#{studentId}, #{sectionId}, 'ENROLLED', SYSTIMESTAMP)
-  </insert>
-
-  <update id="increaseEnrolledCount">
-    UPDATE course_section
-    SET enrolled_count = COALESCE(enrolled_count, 0) + 1
-    WHERE section_id = #{sectionId}
-  </update>
-
-  <update id="decreaseEnrolledCount">
-    UPDATE course_section cs
-    SET enrolled_count = GREATEST(0, COALESCE(enrolled_count, 0) - 1)
-    WHERE EXISTS (
-      SELECT 1
-      FROM enrollment e
-      JOIN course c ON c.course_id = cs.course_id
-      WHERE e.section_id = cs.section_id
-        AND e.student_id = #{studentId}
-        AND e.status = 'ENROLLED'
-        AND c.course_code = #{courseId}
-    )
-  </update>
-
-  <update id="cancelEnrollment">
-    UPDATE enrollment e
-    SET status = 'DROPPED',
-        dropped_at = SYSTIMESTAMP
-    WHERE e.student_id = #{studentId}
-      AND e.status = 'ENROLLED'
-      AND EXISTS (
-        SELECT 1
-        FROM course_section cs
-        JOIN course c ON c.course_id = cs.course_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        WHERE cs.section_id = e.section_id
-          AND c.course_code = #{courseId}
-          AND sm.is_current = 1
-      )
-  </update>
-
-  <select id="findEnrollmentStatus" resultMap="EnrollmentStatusResultMap">
-    SELECT
-      CASE
-        WHEN SYSTIMESTAMP BETWEEN rp.start_at AND rp.end_at THEN 'IN_PROGRESS'
-        WHEN SYSTIMESTAMP <![CDATA[<]]> rp.start_at THEN 'NOT_STARTED'
-        ELSE 'CLOSED'
-      END AS status,
-      TO_CHAR(CAST(rp.end_at AS DATE), 'YYYY-MM-DD') AS deadline,
-      GREATEST(0, CEIL(CAST(rp.end_at AS DATE) - SYSDATE)) AS days_left
-    FROM student s
-    JOIN semester sm ON sm.is_current = 1
-    JOIN registration_period rp ON rp.semester_id = sm.semester_id
-    WHERE s.user_id = #{userId}
-      AND rp.period_type IN ('MAIN', 'ADD_DROP')
-      AND (rp.target_year IS NULL OR rp.target_year = s.year_level)
-    ORDER BY
-      CASE
-        WHEN SYSTIMESTAMP BETWEEN rp.start_at AND rp.end_at THEN 1
-        WHEN SYSTIMESTAMP <![CDATA[<]]> rp.start_at THEN 2
-        ELSE 3
-      END,
-      rp.end_at
-    FETCH FIRST 1 ROW ONLY
+  <select id="callInsertEnroll" statementType="CALLABLE" parameterType="map">
+    { CALL InsertEnroll(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{courseId, mode=IN, jdbcType=VARCHAR},
+      #{sectionId, mode=IN, jdbcType=NUMERIC},
+      #{result, mode=OUT, jdbcType=VARCHAR}
+    ) }
   </select>
 
-  <select id="findCreditSummary" resultMap="CreditSummaryResultMap">
-    SELECT
-      (
-        SELECT COALESCE(SUM(c.credits), 0)
-        FROM enrollment e
-        JOIN course_section cs ON cs.section_id = e.section_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        JOIN course c ON c.course_id = cs.course_id
-        WHERE e.student_id = s.student_id
-          AND e.status = 'ENROLLED'
-          AND sm.is_current = 1
-      ) AS applied,
-      #{maxCredits} AS max_credits,
-      (
-        SELECT COUNT(*)
-        FROM enrollment e
-        JOIN course_section cs ON cs.section_id = e.section_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        WHERE e.student_id = s.student_id
-          AND e.status = 'ENROLLED'
-          AND sm.is_current = 1
-      ) AS course_count,
-      (
-        SELECT COUNT(*)
-        FROM cart_item ci
-        JOIN course_section cs ON cs.section_id = ci.section_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        WHERE ci.student_id = s.student_id
-          AND sm.is_current = 1
-      ) AS cart_count
-    FROM student s
-    WHERE s.user_id = #{userId}
+  <select id="callCancelEnroll" statementType="CALLABLE" parameterType="map">
+    { CALL CancelEnroll(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{courseId, mode=IN, jdbcType=VARCHAR},
+      #{sectionId, mode=IN, jdbcType=NUMERIC},
+      #{result, mode=OUT, jdbcType=VARCHAR}
+    ) }
   </select>
 
-  <select id="findEnrolledCourses" resultMap="EnrolledCourseResultMap">
-    SELECT
-      c.course_code AS course_id,
-      c.course_name,
-      c.credits AS credit,
-      (
-        SELECT LISTAGG(ss.day_of_week || ' ' || ss.start_time || '-' || ss.end_time, ', ')
-          WITHIN GROUP (ORDER BY ss.day_of_week, ss.start_time)
-        FROM section_schedule ss
-        WHERE ss.section_id = cs.section_id
-      ) AS schedule,
-      TO_CHAR(e.enrolled_at, 'YYYY-MM-DD HH24:MI:SS') AS registered_at,
-      p.name AS professor,
-      (
-        SELECT LISTAGG(room_name, ', ') WITHIN GROUP (ORDER BY room_name)
-        FROM (
-          SELECT DISTINCT cr.building || ' ' || cr.room_no AS room_name
-          FROM section_schedule ss
-          JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-          WHERE ss.section_id = cs.section_id
-        )
-      ) AS room
-    FROM student s
-    JOIN enrollment e ON e.student_id = s.student_id AND e.status = 'ENROLLED'
-    JOIN course_section cs ON cs.section_id = e.section_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    WHERE s.user_id = #{userId}
-      AND sm.is_current = 1
-    ORDER BY e.enrolled_at DESC
+  <select id="callGetEnrollStatus" statementType="CALLABLE" parameterType="map">
+    { CALL GET_ENROLL_STATUS(
+      #{status, mode=OUT, jdbcType=VARCHAR},
+      #{startAt, mode=OUT, jdbcType=TIMESTAMP},
+      #{endAt, mode=OUT, jdbcType=TIMESTAMP},
+      #{daysLeft, mode=OUT, jdbcType=NUMERIC},
+      #{remainingSeconds, mode=OUT, jdbcType=NUMERIC},
+      #{deadline, mode=OUT, jdbcType=TIMESTAMP}
+    ) }
   </select>
 
-  <select id="findEnrollmentTimetable" resultMap="TimetableResultMap">
-    SELECT
-      c.course_code AS course_id,
-      c.course_name,
-      c.course_type,
-      c.credits AS credit,
-      p.name AS professor,
-      cs.section_no || '분반' AS division,
-      ss.day_of_week,
-      ss.start_time,
-      ss.end_time,
-      cr.building || ' ' || cr.room_no AS room
-    FROM student s
-    JOIN enrollment e ON e.student_id = s.student_id AND e.status = 'ENROLLED'
-    JOIN course_section cs ON cs.section_id = e.section_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN section_schedule ss ON ss.section_id = cs.section_id
-    JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-    WHERE s.user_id = #{userId}
-      AND sm.is_current = 1
-    ORDER BY ss.day_of_week, ss.start_time
+  <select id="callGetCreditSummary" statementType="CALLABLE" parameterType="map">
+    { CALL GET_CREDIT_SUMMARY(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{applied, mode=OUT, jdbcType=NUMERIC},
+      #{max, mode=OUT, jdbcType=NUMERIC},
+      #{courseCount, mode=OUT, jdbcType=NUMERIC},
+      #{cartCount, mode=OUT, jdbcType=NUMERIC}
+    ) }
   </select>
+
+  <select id="callGetEnrolledCourses" statementType="CALLABLE" parameterType="map">
+    { CALL GET_ENROLLED_COURSES(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{courses, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.StudentEnrollmentMapper.EnrolledCourseResultMap}
+    ) }
+  </select>
+
+  <select id="callGetEnrollmentTimetable" statementType="CALLABLE" parameterType="map">
+    { CALL GET_ENROLLMENT_TIMETABLE(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{rows, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.StudentEnrollmentMapper.TimetableResultMap}
+    ) }
+  </select>
+
 </mapper>

@@ -5,30 +5,24 @@ import com.example.backend.dto.student.StudentEnrolledCourse;
 import com.example.backend.dto.student.StudentEnrollmentStatus;
 import com.example.backend.dto.student.StudentTimetableItem;
 import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface StudentEnrollmentMapper {
 
-  Long findStudentId(@Param("userId") Long userId);
-
   Long findSectionId(@Param("courseId") String courseId, @Param("division") String division);
 
-  void insertEnrollment(@Param("studentId") Long studentId, @Param("sectionId") Long sectionId);
+  void callInsertEnroll(Map<String, Object> params);
 
-  int cancelEnrollment(@Param("studentId") Long studentId, @Param("courseId") String courseId);
+  void callCancelEnroll(Map<String, Object> params);
 
-  int increaseEnrolledCount(@Param("sectionId") Long sectionId);
+  void callGetEnrollStatus(Map<String, Object> params);
 
-  int decreaseEnrolledCount(@Param("studentId") Long studentId, @Param("courseId") String courseId);
+  void callGetCreditSummary(Map<String, Object> params);
 
-  StudentEnrollmentStatus findEnrollmentStatus(@Param("userId") Long userId);
+  void callGetEnrolledCourses(Map<String, Object> params);
 
-  StudentCreditSummary findCreditSummary(
-      @Param("userId") Long userId, @Param("maxCredits") Integer maxCredits);
-
-  List<StudentEnrolledCourse> findEnrolledCourses(@Param("userId") Long userId);
-
-  List<StudentTimetableItem> findEnrollmentTimetable(@Param("userId") Long userId);
+  void callGetEnrollmentTimetable(Map<String, Object> params);
 }

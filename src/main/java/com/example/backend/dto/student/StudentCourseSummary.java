@@ -6,7 +6,6 @@ public class StudentCourseSummary {
 
   private String courseId;
   private String courseName;
-  private String courseCode;
   private String professor;
   private String division;
   private String courseType;
@@ -38,14 +37,6 @@ public class StudentCourseSummary {
 
   public void setCourseName(String courseName) {
     this.courseName = courseName;
-  }
-
-  public String getCourseCode() {
-    return courseCode;
-  }
-
-  public void setCourseCode(String courseCode) {
-    this.courseCode = courseCode;
   }
 
   public String getProfessor() {

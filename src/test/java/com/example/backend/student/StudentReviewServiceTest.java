@@ -11,7 +11,11 @@ import com.example.backend.dto.student.StudentReviewListResponse;
 import com.example.backend.dto.student.StudentReviewRequest;
 import com.example.backend.mapper.StudentReviewMapper;
 import com.example.backend.service.StudentReviewService;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +28,8 @@ class StudentReviewServiceTest {
   @BeforeEach
   void setUp() {
     reviewMapper = new FakeStudentReviewMapper();
-    reviewService = new StudentReviewService(reviewMapper);
+    reviewService = new StudentReviewService(
+        reviewMapper, Clock.fixed(Instant.parse("2026-03-01T00:00:00Z"), ZoneOffset.UTC));
   }
 
   @Test
@@ -45,30 +50,20 @@ class StudentReviewServiceTest {
     assertThat(response.courses().get(1).isCompleted()).isFalse();
     assertThat(response.summary().completed()).isEqualTo(1);
     assertThat(response.summary().pending()).isEqualTo(1);
-    assertThat(reviewMapper.requestedUserId).isEqualTo(1L);
-    assertThat(reviewMapper.requestedSemester).isEqualTo("2026-1");
-  }
-
-  @Test
-  void submitReviewThrowsWhenStudentDoesNotExist() {
-    reviewMapper.studentId = null;
-
-    assertThatThrownBy(() -> reviewService.submitReview(studentUser(), "CSE3033", reviewRequest()))
-        .isInstanceOf(StudentHandler.class)
-        .hasMessage(ErrorStatus.STUDENT_NOT_FOUND.getMessage());
-
-    assertThat(reviewMapper.insertedEnrollmentId).isNull();
+    assertThat(reviewMapper.requestedStudentId).isEqualTo("2024123456");
+    assertThat(reviewMapper.requestedYear).isEqualTo(2026);
+    assertThat(reviewMapper.requestedSemester).isEqualTo(1);
   }
 
   @Test
   void submitReviewThrowsWhenEnrollmentDoesNotExist() {
-    reviewMapper.enrollmentId = null;
+    reviewMapper.insertReviewResult = "ENROLLMENT_NOT_FOUND";
 
     assertThatThrownBy(() -> reviewService.submitReview(studentUser(), "CSE3033", reviewRequest()))
         .isInstanceOf(StudentHandler.class)
         .hasMessage(ErrorStatus.STUDENT_ENROLLMENT_NOT_FOUND.getMessage());
 
-    assertThat(reviewMapper.insertedEnrollmentId).isNull();
+    assertThat(reviewMapper.insertReviewCalled).isTrue();
   }
 
   private StudentReviewRequest reviewRequest() {
@@ -89,42 +84,28 @@ class StudentReviewServiceTest {
 
   private static class FakeStudentReviewMapper implements StudentReviewMapper {
     private final List<StudentReviewItem> reviews = new ArrayList<>();
-    private Long requestedUserId;
-    private String requestedSemester;
-    private Long studentId = 1L;
-    private Long enrollmentId = 1L;
-    private Long insertedEnrollmentId;
+    private String requestedStudentId;
+    private Integer requestedYear;
+    private Integer requestedSemester;
+    private String insertReviewResult = "SUCCESS";
+    private boolean insertReviewCalled;
 
     @Override
-    public Long findStudentId(Long userId) {
-      return studentId;
-    }
-
-    @Override
-    public Long findEnrollmentId(Long studentId, String courseId) {
-      return enrollmentId;
-    }
-
-    @Override
-    public List<StudentReviewItem> findReviews(Long userId, String semester) {
-      requestedUserId = userId;
+    public List<StudentReviewItem> findReviews(String studentId, Integer year, Integer semester) {
+      requestedStudentId = studentId;
+      requestedYear = year;
       requestedSemester = semester;
       return reviews;
     }
 
     @Override
-    public void insertReview(Long enrollmentId, StudentReviewRequest request) {
-      insertedEnrollmentId = enrollmentId;
-    }
-
-    @Override
-    public Long findLatestReviewId(Long enrollmentId) {
-      return 1L;
-    }
-
-    @Override
-    public String findLatestReviewSubmittedAt(Long enrollmentId) {
-      return "2026-06-02 14:30:00";
+    public void callInsertReview(Map<String, Object> params) {
+      insertReviewCalled = true;
+      params.put("result", insertReviewResult);
+      if ("SUCCESS".equals(insertReviewResult)) {
+        params.put("reviewId", "1");
+        params.put("submittedAt", "2026-06-02 14:30:00");
+      }
     }
   }
 }

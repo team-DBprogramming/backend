@@ -5,6 +5,7 @@ import com.example.backend.apiPayload.exception.handler.NotificationHandler;
 import com.example.backend.dto.notification.NotificationDetailResponse;
 import com.example.backend.dto.notification.NotificationListResponse;
 import com.example.backend.mapper.NotificationMapper;
+import com.example.backend.security.AuthenticatedUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,14 +19,14 @@ public class NotificationService {
   }
 
   @Transactional(readOnly = true)
-  public NotificationListResponse getNotifications(Long recipientUserId) {
-    return new NotificationListResponse(notificationMapper.findNotifications(recipientUserId));
+  public NotificationListResponse getNotifications(AuthenticatedUser currentUser) {
+    return new NotificationListResponse(notificationMapper.findNotifications(currentUser.requireStudentId()));
   }
 
   @Transactional(readOnly = true)
-  public NotificationDetailResponse getNotification(Long recipientUserId, String notificationId) {
+  public NotificationDetailResponse getNotification(AuthenticatedUser currentUser, String notificationId) {
     NotificationDetailResponse notification =
-        notificationMapper.findNotification(recipientUserId, notificationId);
+        notificationMapper.findNotification(currentUser.requireStudentId(), notificationId);
     if (notification == null) {
       throw new NotificationHandler(ErrorStatus.NOTIFICATION_NOT_FOUND);
     }
@@ -33,7 +34,7 @@ public class NotificationService {
   }
 
   @Transactional
-  public void markAsRead(Long recipientUserId, String notificationId) {
-    notificationMapper.markAsRead(recipientUserId, notificationId);
+  public void markAsRead(AuthenticatedUser currentUser, String notificationId) {
+    notificationMapper.markAsRead(currentUser.requireStudentId(), notificationId);
   }
 }

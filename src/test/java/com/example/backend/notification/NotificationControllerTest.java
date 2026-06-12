@@ -1,7 +1,8 @@
 package com.example.backend.notification;
 
-import static com.example.backend.support.TestAuthentications.withProfessorAuthentication;
+import static com.example.backend.support.TestAuthentications.withStudentAuthentication;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,6 +15,7 @@ import com.example.backend.dto.notification.NotificationDetailResponse;
 import com.example.backend.dto.notification.NotificationItem;
 import com.example.backend.dto.notification.NotificationListResponse;
 import com.example.backend.service.NotificationService;
+import com.example.backend.security.AuthenticatedUser;
 import com.example.backend.utils.JwtTokenProvider;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -34,7 +36,7 @@ class NotificationControllerTest {
 
   @Test
   void getNotificationsReturnsProjectApiResponseFormat() throws Exception {
-    when(notificationService.getNotifications(eq(10L)))
+    when(notificationService.getNotifications(argThat(user -> isStudent(user))))
         .thenReturn(
             new NotificationListResponse(
                 List.of(
@@ -45,23 +47,24 @@ class NotificationControllerTest {
                         "COURSE_REVIEW",
                         false,
                         "2026-06-01 10:15",
-                        "101",
+                        "CSE3033",
+                        "1분반",
                         null))));
 
     mockMvc
-        .perform(get("/notifications").with(withProfessorAuthentication()))
+        .perform(get("/notifications").with(withStudentAuthentication()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.isSuccess").value(true))
         .andExpect(jsonPath("$.code").value("NOTIFICATION200"))
         .andExpect(jsonPath("$.result.notifications[0].notificationId").value("1"))
         .andExpect(jsonPath("$.result.notifications[0].title").value("새 강의 평가"))
         .andExpect(jsonPath("$.result.notifications[0].isRead").value(false))
-        .andExpect(jsonPath("$.result.notifications[0].targetSectionId").value("101"));
+        .andExpect(jsonPath("$.result.notifications[0].targetCourseId").value("CSE3033"));
   }
 
   @Test
   void getNotificationReturnsDetailForPopup() throws Exception {
-    when(notificationService.getNotification(eq(10L), eq("7")))
+    when(notificationService.getNotification(argThat(user -> isStudent(user)), eq("7")))
         .thenReturn(
             new NotificationDetailResponse(
                 "7",
@@ -74,12 +77,13 @@ class NotificationControllerTest {
                 "CSE301",
                 "데이터베이스개론",
                 "01분반",
-                "201",
+                "CSE3033",
+                "1분반",
                 "301",
                 "전공 필수 과목으로 수강이 필요합니다."));
 
     mockMvc
-        .perform(get("/notifications/7").with(withProfessorAuthentication()))
+        .perform(get("/notifications/7").with(withStudentAuthentication()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.isSuccess").value(true))
         .andExpect(jsonPath("$.code").value("NOTIFICATION200"))
@@ -92,12 +96,16 @@ class NotificationControllerTest {
   @Test
   void markNotificationAsReadReturnsProjectApiResponseFormat() throws Exception {
     mockMvc
-        .perform(patch("/notifications/7/read").with(withProfessorAuthentication()))
+        .perform(patch("/notifications/7/read").with(withStudentAuthentication()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.isSuccess").value(true))
         .andExpect(jsonPath("$.code").value("NOTIFICATION200"))
         .andExpect(jsonPath("$.result").doesNotExist());
 
-    verify(notificationService).markAsRead(eq(10L), eq("7"));
+    verify(notificationService).markAsRead(argThat(user -> isStudent(user)), eq("7"));
+  }
+
+  private boolean isStudent(AuthenticatedUser user) {
+    return user != null && "STUDENT".equals(user.role()) && "2024123456".equals(user.loginId());
   }
 }

@@ -39,8 +39,9 @@ public class StudentEnrollmentController {
   public StudentApiResponse<StudentMutationResponse> enroll(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestBody StudentEnrollmentRequest request) {
+    StudentMutationResponse response = enrollmentService.enroll(userDetails.toAuthenticatedUser(), request);
     return StudentApiResponse.success(
-        "S201", "수강신청 성공", enrollmentService.enroll(userDetails.toAuthenticatedUser(), request));
+        "S201", enrollmentMessage(response.status()), response);
   }
 
   @DeleteMapping("/{courseId}")
@@ -48,8 +49,9 @@ public class StudentEnrollmentController {
   public StudentApiResponse<StudentMutationResponse> cancel(
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
       @PathVariable String courseId) {
+    StudentMutationResponse response = enrollmentService.cancel(userDetails.toAuthenticatedUser(), courseId);
     return StudentApiResponse.success(
-        "S200", "수강취소 성공", enrollmentService.cancel(userDetails.toAuthenticatedUser(), courseId));
+        "S200", cancelMessage(response.status()), response);
   }
 
   @GetMapping("/status")
@@ -74,5 +76,26 @@ public class StudentEnrollmentController {
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails) {
     return StudentApiResponse.success(
         "S200", "시간표 미리보기 조회 성공", enrollmentService.getPreview(userDetails.toAuthenticatedUser()));
+  }
+
+  private String enrollmentMessage(String status) {
+    return switch (status) {
+      case "ENROLLED" -> "수강신청 성공";
+      case "MAX_CREDIT_EXCEEDED" -> "최대 신청 학점을 초과합니다.";
+      case "DUPLICATE_COURSE" -> "이미 신청한 과목입니다.";
+      case "CAPACITY_FULL" -> "강의 정원이 가득 찼습니다.";
+      case "TIME_CONFLICT" -> "기존 수업과 시간이 겹칩니다.";
+      case "COURSE_NOT_FOUND", "CLASS_NOT_FOUND" -> "강의 또는 분반을 찾을 수 없습니다.";
+      case "REGISTRATION_CLOSED" -> "현재 수강신청 기간이 아닙니다.";
+      default -> "수강신청 처리 결과를 확인해주세요.";
+    };
+  }
+
+  private String cancelMessage(String status) {
+    return switch (status) {
+      case "DROPPED" -> "수강취소 성공";
+      case "ENROLL_NOT_FOUND" -> "수강 내역을 찾을 수 없습니다.";
+      default -> "수강취소 처리 결과를 확인해주세요.";
+    };
   }
 }
