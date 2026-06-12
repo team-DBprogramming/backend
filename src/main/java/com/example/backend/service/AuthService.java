@@ -90,11 +90,13 @@ public class AuthService {
     }
 
     String tokenHash = tokenProvider.hashToken(request.refreshToken());
-    Instant now = clock.instant();
-    if (refreshTokenMapper.countActive(tokenHash, now) <= 0) {
-      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
-    }
-    refreshTokenMapper.revoke(tokenHash, now);
+    Map<String, Object> revokeParams = new HashMap<>();
+    revokeParams.put("tokenHash", tokenHash);
+    revokeParams.put("loginId", refreshClaims.loginId());
+    revokeParams.put("loginType", refreshClaims.role());
+    revokeParams.put("revokedAt", clock.instant());
+    refreshTokenMapper.callRevokeRefreshToken(revokeParams);
+    ensureRevokeSuccess(revokeParams);
   }
 
   @Transactional(readOnly = true)
@@ -135,6 +137,12 @@ public class AuthService {
   private void ensureSaveSuccess(Map<String, Object> params) {
     if (!"SAVE_SUCCESS".equals(stringValue(params.get("result")))) {
       throw new AuthHandler(ErrorStatus.AUTH_INVALID_CREDENTIALS);
+    }
+  }
+
+  private void ensureRevokeSuccess(Map<String, Object> params) {
+    if (!"REVOKE_SUCCESS".equals(stringValue(params.get("result")))) {
+      throw new AuthHandler(ErrorStatus.AUTH_INVALID_TOKEN);
     }
   }
 

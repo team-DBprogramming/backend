@@ -14,6 +14,16 @@
     ) }
   </select>
 
+  <select id="callRevokeRefreshToken" statementType="CALLABLE" parameterType="map">
+    { call REVOKE_REFRESH_TOKEN(
+      #{tokenHash, mode=IN, jdbcType=VARCHAR},
+      #{loginId, mode=IN, jdbcType=VARCHAR},
+      #{loginType, mode=IN, jdbcType=VARCHAR},
+      #{revokedAt, mode=IN, jdbcType=TIMESTAMP},
+      #{result, mode=OUT, jdbcType=VARCHAR}
+    ) }
+  </select>
+
   <select id="countActive" resultType="int">
     SELECT COUNT(*)
     FROM refresh_token
@@ -21,11 +31,4 @@
       AND revoked_at IS NULL
       AND expires_at &gt; #{now}
   </select>
-
-  <update id="revoke">
-    UPDATE refresh_token
-    SET revoked_at = #{revokedAt}
-    WHERE token_hash = #{tokenHash}
-      AND revoked_at IS NULL
-  </update>
 </mapper>

@@ -10,7 +10,7 @@ public interface RefreshTokenMapper {
 
   void callSaveLoginSuccess(Map<String, Object> params);
 
-  int countActive(@Param("tokenHash") String tokenHash, @Param("now") Instant now);
+  void callRevokeRefreshToken(Map<String, Object> params);
 
-  void revoke(@Param("tokenHash") String tokenHash, @Param("revokedAt") Instant revokedAt);
+  int countActive(@Param("tokenHash") String tokenHash, @Param("now") Instant now);
 }

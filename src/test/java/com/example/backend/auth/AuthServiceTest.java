@@ -113,6 +113,8 @@ class AuthServiceTest {
     authService.logout(studentUser(), new LogoutRequest(tokens.refreshToken()));
 
     assertThat(refreshTokenMapper.revokedTokenHash).isEqualTo(refreshTokenHash);
+    assertThat(refreshTokenMapper.revokedLoginId).isEqualTo("2024123456");
+    assertThat(refreshTokenMapper.revokedLoginType).isEqualTo("STUDENT");
   }
 
   @Test
@@ -201,6 +203,8 @@ class AuthServiceTest {
     private int lastRememberMe;
     private Instant lastExpiresAt;
     private String revokedTokenHash;
+    private String revokedLoginId;
+    private String revokedLoginType;
 
     void saveActiveToken(String tokenHash, Instant expiresAt) {
       activeTokens.put(tokenHash, expiresAt);
@@ -221,9 +225,19 @@ class AuthServiceTest {
     }
 
     @Override
-    public void revoke(String tokenHash, Instant revokedAt) {
+    public void callRevokeRefreshToken(Map<String, Object> params) {
+      String tokenHash = (String) params.get("tokenHash");
+      Instant revokedAt = (Instant) params.get("revokedAt");
+      Instant expiresAt = activeTokens.get(tokenHash);
+      if (expiresAt == null || !expiresAt.isAfter(revokedAt)) {
+        params.put("result", "INVALID_TOKEN");
+        return;
+      }
       revokedTokenHash = tokenHash;
+      revokedLoginId = (String) params.get("loginId");
+      revokedLoginType = (String) params.get("loginType");
       activeTokens.remove(tokenHash);
+      params.put("result", "REVOKE_SUCCESS");
     }
   }
 }

@@ -17,6 +17,10 @@ begin
              'PROCEDURE'
         from dual
       union all
+      select 'REVOKE_REFRESH_TOKEN',
+             'PROCEDURE'
+        from dual
+      union all
       select 'V_AUTH_USER',
              'VIEW'
         from dual
@@ -656,6 +660,47 @@ EXCEPTION
       p_result := 'DUPLICATE_TOKEN';
    WHEN OTHERS THEN
       p_result := 'SAVE_FAILED';
+END;
+/
+
+CREATE OR REPLACE PROCEDURE REVOKE_REFRESH_TOKEN(
+   p_token_hash IN refresh_token.token_hash%TYPE,
+   p_login_id   IN refresh_token.login_id%TYPE,
+   p_login_type IN refresh_token.login_type%TYPE,
+   p_revoked_at IN refresh_token.revoked_at%TYPE,
+   p_result     OUT varchar2
+)
+IS
+   v_token refresh_token%ROWTYPE;
+BEGIN
+   p_result := 'INVALID_TOKEN';
+
+   SELECT *
+     INTO v_token
+     FROM refresh_token
+    WHERE token_hash = p_token_hash
+      AND login_id = p_login_id
+      AND login_type = p_login_type
+      AND revoked_at IS NULL
+      AND expires_at > p_revoked_at;
+
+   UPDATE refresh_token
+      SET revoked_at = p_revoked_at
+    WHERE token_id = v_token.token_id
+      AND revoked_at IS NULL;
+
+   IF SQL%ROWCOUNT = 1 THEN
+      p_result := 'REVOKE_SUCCESS';
+   ELSE
+      p_result := 'INVALID_TOKEN';
+   END IF;
+EXCEPTION
+   WHEN NO_DATA_FOUND THEN
+      p_result := 'INVALID_TOKEN';
+   WHEN TOO_MANY_ROWS THEN
+      p_result := 'INVALID_TOKEN';
+   WHEN OTHERS THEN
+      p_result := 'REVOKE_FAILED';
 END;
 /
 
