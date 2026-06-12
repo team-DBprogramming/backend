@@ -20,6 +20,7 @@
 
   <resultMap id="BulkEnrollResultMap" type="java.util.HashMap">
     <result property="cartItemId" column="cart_item_id" />
+    <result property="courseId" column="course_id" />
     <result property="success" column="success" />
     <result property="message" column="message" />
     <result property="code" column="code" />
@@ -127,7 +128,7 @@
   <select id="callEnrollFromCart" statementType="CALLABLE" parameterType="map">
     { CALL ENROLL_FROM_CART(
       #{studentId, mode=IN, jdbcType=VARCHAR},
-      #{cartItemIdsCsv, mode=IN, jdbcType=VARCHAR},
+      #{courseIdsCsv, mode=IN, jdbcType=VARCHAR},
       #{results, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.StudentCartMapper.BulkEnrollResultMap},
       #{summary, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.StudentCartMapper.BulkEnrollSummaryMap}
     ) }
