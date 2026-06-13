@@ -14,7 +14,8 @@ public class WebConfig implements WebMvcConfigurer {
         .allowedOrigins(
             "http://localhost:3000", // 로컬 프론트엔드 개발 서버
             "http://localhost:5173",
-            "https://sugang-campus.netlify.app"
+            "https://sugang-campus.netlify.app",
+            "https://sugang-campus.sugi0jubak.workers.dev/"
             )
         .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS") // 허용할 HTTP 메서드
         .allowedHeaders("*") // 모든 헤더 허용
