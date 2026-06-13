@@ -7,48 +7,44 @@ import com.example.backend.dto.professor.CourseRequestDecisionResponse;
 import com.example.backend.dto.professor.CourseRequestItem;
 import com.example.backend.dto.professor.CourseRequestListResponse;
 import com.example.backend.dto.professor.CourseRequestSummary;
-import com.example.backend.dto.professor.ProfessorCourseRequestInfo;
 import com.example.backend.mapper.ProfessorCourseRequestMapper;
 import com.example.backend.security.AuthenticatedUser;
-import java.time.Clock;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProfessorCourseRequestService {
 
-  private static final String APPROVED = "APPROVED";
-  private static final String REJECTED = "REJECTED";
-  private static final String PENDING = "PENDING";
-  private static final String RESULT_NOTIFICATION_TYPE = "COURSE_REQUEST_RESULT";
+  private static final String SUCCESS = "SUCCESS";
+  private static final String NOT_FOUND = "NOT_FOUND";
+  private static final String ALREADY_PROCESSED = "ALREADY_PROCESSED";
+  private static final String INVALID_STATUS = "INVALID_STATUS";
+  private static final String DIVISION_REQUIRED = "DIVISION_REQUIRED";
 
   private final ProfessorCourseRequestMapper requestMapper;
-  private final Clock clock;
 
-  public ProfessorCourseRequestService(ProfessorCourseRequestMapper requestMapper, Clock clock) {
+  public ProfessorCourseRequestService(ProfessorCourseRequestMapper requestMapper) {
     this.requestMapper = requestMapper;
-    this.clock = clock;
   }
 
   @Transactional(readOnly = true)
   public CourseRequestListResponse getRequests(
       AuthenticatedUser currentUser, String courseId, String division, Integer page, Integer size) {
     Long professorUserId = currentUser.requireProfessorUserId();
-    String normalizedDivision = normalizeRequiredDivision(division);
-    int currentPage = positiveOrDefault(page, 1);
-    int pageSize = positiveOrDefault(size, 20);
-    int offset = (currentPage - 1) * pageSize;
 
-    CourseRequestSummary summary =
-        requestMapper.findRequestSummary(professorUserId, courseId, normalizedDivision);
+    CourseRequestSummary summary = requestMapper.findRequestSummary(professorUserId, courseId, division);
     if (summary == null) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
     }
     List<CourseRequestItem> requests =
-        requestMapper.findPendingRequests(
-            professorUserId, courseId, normalizedDivision, pageSize, offset);
+        requestMapper.findPendingRequests(professorUserId, courseId, division, page, size);
     return new CourseRequestListResponse(summary, requests);
   }
 
@@ -59,72 +55,55 @@ public class ProfessorCourseRequestService {
       String division,
       String requestId,
       CourseRequestDecisionRequest request) {
-    Long professorUserId = currentUser.requireProfessorUserId();
-    String normalizedDivision = normalizeRequiredDivision(division);
-    String status = normalizeStatus(request);
-    Instant now = clock.instant();
+    Map<String, Object> params = new HashMap<>();
+    params.put("professorUserId", currentUser.requireProfessorUserId());
+    params.put("courseId", courseId);
+    params.put("division", division);
+    params.put("requestId", requestId);
+    params.put("status", request == null ? null : request.status());
 
-    ProfessorCourseRequestInfo info =
-        requestMapper.findRequestForProfessor(professorUserId, courseId, normalizedDivision, requestId);
-    if (info == null) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
-    }
-    if (!PENDING.equals(info.status())) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_ALREADY_PROCESSED);
-    }
-
-    int updated =
-        requestMapper.updatePendingRequestStatus(
-            professorUserId, courseId, normalizedDivision, requestId, status, now);
-    if (updated <= 0) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_ALREADY_PROCESSED);
+    requestMapper.processCourseRequest(params);
+    String result = stringValue(params.get("result"));
+    if (!SUCCESS.equals(result)) {
+      throw mapProcedureFailure(result);
     }
 
-    requestMapper.insertResultNotification(
-        info.studentUserId(),
-        professorUserId,
-        info.sectionId(),
-        info.requestPk(),
-        notificationTitle(info.courseName(), status),
-        notificationBody(info.courseName(), status),
-        RESULT_NOTIFICATION_TYPE,
-        now);
-
-    return new CourseRequestDecisionResponse(info.requestId(), status, now);
+    return new CourseRequestDecisionResponse(
+        stringValue(params.get("outRequestId")),
+        stringValue(params.get("outStatus")),
+        toInstant(params.get("outUpdatedAt")));
   }
 
-  private String normalizeStatus(CourseRequestDecisionRequest request) {
-    if (request == null || isBlank(request.status())) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_INVALID_STATUS);
+  private ProfessorHandler mapProcedureFailure(String result) {
+    if (NOT_FOUND.equals(result)) {
+      return new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
     }
-    String status = request.status().trim().toUpperCase();
-    if (!APPROVED.equals(status) && !REJECTED.equals(status)) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_INVALID_STATUS);
+    if (ALREADY_PROCESSED.equals(result)) {
+      return new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_ALREADY_PROCESSED);
     }
-    return status;
-  }
-
-  private String normalizeRequiredDivision(String division) {
-    if (isBlank(division)) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_DIVISION_REQUIRED);
+    if (INVALID_STATUS.equals(result)) {
+      return new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_INVALID_STATUS);
     }
-    return division.trim();
+    if (DIVISION_REQUIRED.equals(result)) {
+      return new ProfessorHandler(ErrorStatus.PROFESSOR_DIVISION_REQUIRED);
+    }
+    return new ProfessorHandler(ErrorStatus._INTERNAL_SERVER_ERROR);
   }
 
-  private String notificationTitle(String courseName, String status) {
-    return courseName + " 수강 요청 결과";
+  private String stringValue(Object value) {
+    return value == null ? null : value.toString();
   }
 
-  private String notificationBody(String courseName, String status) {
-    String result = APPROVED.equals(status) ? "승인" : "거절";
-    return courseName + " 수강 요청이 " + result + "되었습니다.";
-  }
-
-  private boolean isBlank(String value) {
-    return value == null || value.trim().isEmpty();
-  }
-
-  private int positiveOrDefault(Integer value, int defaultValue) {
-    return value == null || value <= 0 ? defaultValue : value;
+  private Instant toInstant(Object value) {
+    if (value instanceof Instant instant) {
+      return instant;
+    }
+    if (value instanceof Timestamp timestamp) {
+      return timestamp.toInstant();
+    }
+    if (value instanceof LocalDateTime localDateTime) {
+      return localDateTime.toInstant(ZoneOffset.UTC);
+    }
+    throw new ProfessorHandler(ErrorStatus._INTERNAL_SERVER_ERROR);
   }
 }

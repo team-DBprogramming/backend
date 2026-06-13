@@ -1,8 +1,7 @@
 package com.example.backend.professor;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static com.example.backend.support.TestAuthentications.professorUser;
-import static com.example.backend.support.TestAuthentications.studentUser;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
@@ -11,57 +10,52 @@ import com.example.backend.dto.professor.CourseRequestDecisionResponse;
 import com.example.backend.dto.professor.CourseRequestItem;
 import com.example.backend.dto.professor.CourseRequestListResponse;
 import com.example.backend.dto.professor.CourseRequestSummary;
-import com.example.backend.dto.professor.ProfessorCourseRequestInfo;
 import com.example.backend.mapper.ProfessorCourseRequestMapper;
 import com.example.backend.service.ProfessorCourseRequestService;
-import java.time.Clock;
+import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ProfessorCourseRequestServiceTest {
 
-  private final Clock clock = Clock.fixed(Instant.parse("2026-05-21T22:15:30Z"), ZoneOffset.UTC);
   private FakeProfessorCourseRequestMapper requestMapper;
   private ProfessorCourseRequestService requestService;
 
   @BeforeEach
   void setUp() {
     requestMapper = new FakeProfessorCourseRequestMapper();
-    requestService = new ProfessorCourseRequestService(requestMapper, clock);
+    requestService = new ProfessorCourseRequestService(requestMapper);
   }
 
   @Test
-  void decideRequestApprovesPendingRequestAndCreatesNotification() {
-    requestMapper.info =
-        new ProfessorCourseRequestInfo(
-            1L, "req-db-001", "PENDING", 20L, 10L, 100L, "데이터베이스개론");
+  void decideRequestUsesCallableProcedureResult() {
+    requestMapper.result = "SUCCESS";
+    requestMapper.outRequestId = "301";
+    requestMapper.outStatus = "APPROVED";
+    requestMapper.outUpdatedAt = Timestamp.from(Instant.parse("2026-05-21T22:15:30Z"));
 
     CourseRequestDecisionResponse response =
         requestService.decideRequest(
             professorUser(),
             "CSE301",
-            "01",
-            "req-db-001",
-            new CourseRequestDecisionRequest("APPROVED"));
+            " 01 ",
+            "301",
+            new CourseRequestDecisionRequest(" approved "));
 
-    assertThat(response.requestId()).isEqualTo("req-db-001");
+    assertThat(response.requestId()).isEqualTo("301");
     assertThat(response.status()).isEqualTo("APPROVED");
     assertThat(response.updatedAt()).isEqualTo(Instant.parse("2026-05-21T22:15:30Z"));
-    assertThat(requestMapper.updatedStatus).isEqualTo("APPROVED");
-    assertThat(requestMapper.notificationRecipientUserId).isEqualTo(20L);
-    assertThat(requestMapper.notificationSenderUserId).isEqualTo(10L);
-    assertThat(requestMapper.notificationType).isEqualTo("COURSE_REQUEST_RESULT");
+    assertThat(requestMapper.requestedDivision).isEqualTo(" 01 ");
+    assertThat(requestMapper.requestedStatus).isEqualTo(" approved ");
   }
 
   @Test
-  void decideRequestRejectsAlreadyProcessedRequest() {
-    requestMapper.info =
-        new ProfessorCourseRequestInfo(
-            1L, "req-db-001", "APPROVED", 20L, 10L, 100L, "데이터베이스개론");
+  void decideRequestMapsAlreadyProcessedProcedureResult() {
+    requestMapper.result = "ALREADY_PROCESSED";
 
     assertThatThrownBy(
             () ->
@@ -69,7 +63,7 @@ class ProfessorCourseRequestServiceTest {
                     professorUser(),
                     "CSE301",
                     "01",
-                    "req-db-001",
+                    "301",
                     new CourseRequestDecisionRequest("REJECTED")))
         .isInstanceOfSatisfying(
             ProfessorHandler.class,
@@ -78,7 +72,8 @@ class ProfessorCourseRequestServiceTest {
   }
 
   @Test
-  void decideRequestRejectsInvalidStatus() {
+  void decideRequestMapsInvalidStatusProcedureResult() {
+    requestMapper.result = "INVALID_STATUS";
 
     assertThatThrownBy(
             () ->
@@ -86,7 +81,7 @@ class ProfessorCourseRequestServiceTest {
                     professorUser(),
                     "CSE301",
                     "01",
-                    "req-db-001",
+                    "301",
                     new CourseRequestDecisionRequest("PENDING")))
         .isInstanceOfSatisfying(
             ProfessorHandler.class,
@@ -95,92 +90,67 @@ class ProfessorCourseRequestServiceTest {
   }
 
   @Test
-  void listRequestsReturnsSummaryAndPendingRequestsWithDefaultPaging() {
+  void listRequestsLeavesDivisionAndPagingDefaultsToSql() {
     requestMapper.summary =
-        new CourseRequestSummary("데이터베이스개론", "CSE301", "01분반", "2026-1학기", 6, 3);
+        new CourseRequestSummary("Database", "CSE301", "01분반", "2026-1학기", 6, 3);
     requestMapper.requests.add(
         new CourseRequestItem(
-            "req-db-001",
+            "301",
             "2024111111",
-            "홍길동",
+            "Student",
             3,
-            "컴퓨터공학과",
+            "Computer Science",
             "2026-05-15 14:30",
-            "전공 필수 과목으로 수강이 필요합니다."));
+            "Required major course."));
 
     CourseRequestListResponse response =
-        requestService.getRequests(professorUser(), "CSE301", "01", null, null);
+        requestService.getRequests(professorUser(), "CSE301", " 01 ", null, null);
 
-    assertThat(response.summary().courseName()).isEqualTo("데이터베이스개론");
+    assertThat(response.summary().courseName()).isEqualTo("Database");
     assertThat(response.summary().requestCount()).isEqualTo(3);
     assertThat(response.requests()).hasSize(1);
     assertThat(response.requests().get(0).studentId()).isEqualTo("2024111111");
-    assertThat(requestMapper.requestedSize).isEqualTo(20);
-    assertThat(requestMapper.requestedOffset).isZero();
-    assertThat(requestMapper.requestedDivision).isEqualTo("01");
+    assertThat(requestMapper.requestedDivision).isEqualTo(" 01 ");
+    assertThat(requestMapper.requestedPage).isNull();
+    assertThat(requestMapper.requestedSize).isNull();
   }
 
   private static class FakeProfessorCourseRequestMapper implements ProfessorCourseRequestMapper {
-    private ProfessorCourseRequestInfo info;
     private CourseRequestSummary summary;
     private final List<CourseRequestItem> requests = new ArrayList<>();
-    private String updatedStatus;
-    private Long notificationRecipientUserId;
-    private Long notificationSenderUserId;
-    private String notificationType;
+    private String result;
+    private String outRequestId;
+    private String outStatus;
+    private Timestamp outUpdatedAt;
     private String requestedDivision;
-    private int requestedSize;
-    private int requestedOffset;
+    private String requestedStatus;
+    private Integer requestedPage;
+    private Integer requestedSize;
 
     @Override
-    public ProfessorCourseRequestInfo findRequestForProfessor(
-        Long professorUserId, String courseId, String division, String requestId) {
-      requestedDivision = division;
-      return info;
-    }
-
-    @Override
-    public CourseRequestSummary findRequestSummary(Long professorUserId, String courseId, String division) {
+    public CourseRequestSummary findRequestSummary(
+        Long professorUserId, String courseId, String division) {
       requestedDivision = division;
       return summary;
     }
 
     @Override
     public List<CourseRequestItem> findPendingRequests(
-        Long professorUserId, String courseId, String division, int size, int offset) {
+        Long professorUserId, String courseId, String division, Integer page, Integer size) {
       requestedDivision = division;
+      requestedPage = page;
       requestedSize = size;
-      requestedOffset = offset;
       return requests;
     }
 
     @Override
-    public int updatePendingRequestStatus(
-        Long professorUserId,
-        String courseId,
-        String division,
-        String requestId,
-        String status,
-        Instant processedAt) {
-      requestedDivision = division;
-      updatedStatus = status;
-      return info != null && "PENDING".equals(info.status()) ? 1 : 0;
-    }
-
-    @Override
-    public void insertResultNotification(
-        Long recipientUserId,
-        Long senderUserId,
-        Long targetSectionId,
-        Long targetRequestId,
-        String title,
-        String body,
-        String type,
-        Instant createdAt) {
-      notificationRecipientUserId = recipientUserId;
-      notificationSenderUserId = senderUserId;
-      notificationType = type;
+    public void processCourseRequest(Map<String, Object> params) {
+      requestedDivision = (String) params.get("division");
+      requestedStatus = (String) params.get("status");
+      params.put("result", result);
+      params.put("outRequestId", outRequestId);
+      params.put("outStatus", outStatus);
+      params.put("outUpdatedAt", outUpdatedAt);
     }
   }
 }
-

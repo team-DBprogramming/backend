@@ -4,18 +4,6 @@
     "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.example.backend.mapper.ProfessorCourseRequestMapper">
-  <resultMap id="CourseRequestInfoResultMap" type="com.example.backend.dto.professor.ProfessorCourseRequestInfo">
-    <constructor>
-      <arg column="request_pk" javaType="java.lang.Long" />
-      <arg column="request_id" javaType="java.lang.String" />
-      <arg column="status" javaType="java.lang.String" />
-      <arg column="student_user_id" javaType="java.lang.Long" />
-      <arg column="professor_user_id" javaType="java.lang.Long" />
-      <arg column="section_id" javaType="java.lang.Long" />
-      <arg column="course_name" javaType="java.lang.String" />
-    </constructor>
-  </resultMap>
-
   <resultMap id="CourseRequestSummaryResultMap" type="com.example.backend.dto.professor.CourseRequestSummary">
     <constructor>
       <arg column="course_name" javaType="java.lang.String" />
@@ -40,49 +28,42 @@
   </resultMap>
 
   <sql id="divisionCondition">
-    (cs.section_no = #{division} OR cs.section_no || '분반' = #{division})
+    (
+      LPAD(TO_CHAR(cls.c_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(#{division,jdbcType=VARCHAR}), '^[0-9]+'), 2, '0')
+      OR TO_CHAR(cls.c_no) || '분반' = TRIM(#{division,jdbcType=VARCHAR})
+      OR LPAD(TO_CHAR(cls.c_no), 2, '0') || '분반' = TRIM(#{division,jdbcType=VARCHAR})
+    )
   </sql>
 
-  <sql id="requestDivisionCondition">
-    (rcs.section_no = #{division} OR rcs.section_no || '분반' = #{division})
+  <sql id="currentSemesterCondition">
+    cls.c_year = Date2EnrollYear(SYSDATE)
+    AND cls.c_semester = Date2EnrollSemester(SYSDATE)
   </sql>
 
   <select id="findRequestSummary" resultMap="CourseRequestSummaryResultMap">
     SELECT
-      c.course_name,
-      c.course_code AS course_id,
-      MIN(cs.section_no) || '분반' AS division,
-      TO_CHAR(sm.year) || '-' ||
-        CASE sm.term
-          WHEN 'SPRING' THEN '1'
-          WHEN 'FALL' THEN '2'
-          ELSE sm.term
-        END || '학기' AS semester,
-      COALESCE(SUM(cs.enrolled_count), 0) AS total_students,
+      l.subject AS course_name,
+      l.no AS course_id,
+      LPAD(TO_CHAR(cls.c_no), 2, '0') || '분반' AS division,
+      TO_CHAR(cls.c_year) || '-' || TO_CHAR(cls.c_semester) || '학기' AS semester,
+      COALESCE(cls.c_now, 0) AS total_students,
       (
         SELECT COUNT(*)
         FROM course_request cr
-        JOIN course_section rcs ON rcs.section_id = cr.section_id
-        JOIN course rc ON rc.course_id = rcs.course_id
-        JOIN semester rsm ON rsm.semester_id = rcs.semester_id
-        JOIN professor rp ON rp.professor_id = rcs.professor_id
-        WHERE rp.user_id = #{professorUserId}
-          AND rc.course_code = #{courseId}
-          AND <include refid="requestDivisionCondition" />
-          AND rcs.status != 'CANCELLED'
-          AND rsm.is_current = 1
+        WHERE cr.c_id = cls.c_id
+          AND cr.c_no = cls.c_no
           AND cr.status = 'PENDING'
       ) AS request_count
-    FROM professor p
-    JOIN course_section cs ON cs.professor_id = p.professor_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE p.user_id = #{professorUserId}
-      AND c.course_code = #{courseId}
+    FROM user_account ua
+    JOIN professor p ON p.p_id = ua.login_id
+    JOIN class cls ON cls.p_id = p.p_id
+    JOIN lecture l ON l.no = cls.c_id
+    WHERE ua.user_id = #{professorUserId}
+      AND ua.role = 'PROFESSOR'
+      AND l.no = #{courseId}
       AND <include refid="divisionCondition" />
-      AND cs.status != 'CANCELLED'
-      AND sm.is_current = 1
-    GROUP BY c.course_name, c.course_code, sm.year, sm.term
+      AND cls.c_status != 'CANCELLED'
+      AND <include refid="currentSemesterCondition" />
   </select>
 
   <select id="findPendingRequests" resultMap="CourseRequestItemResultMap">
@@ -97,102 +78,47 @@
     FROM (
       SELECT
         TO_CHAR(cr.request_id) AS request_id,
-        ua.login_id AS student_id,
-        s.name,
-        s.year_level AS grade,
-        d.dept_name AS major,
+        s.s_id AS student_id,
+        s.s_name AS name,
+        s.s_year AS grade,
+        s.s_major AS major,
         TO_CHAR(cr.requested_at, 'YYYY-MM-DD HH24:MI') AS created_at,
         DBMS_LOB.SUBSTR(cr.reason, 4000, 1) AS reason,
         ROW_NUMBER() OVER (ORDER BY cr.requested_at DESC, cr.request_id DESC) AS row_num
       FROM course_request cr
-      JOIN student s ON s.student_id = cr.student_id
-      JOIN user_account ua ON ua.user_id = s.user_id
-      JOIN department d ON d.dept_id = s.dept_id
-      JOIN course_section cs ON cs.section_id = cr.section_id
-      JOIN course c ON c.course_id = cs.course_id
-      JOIN semester sm ON sm.semester_id = cs.semester_id
-      JOIN professor p ON p.professor_id = cs.professor_id
-      WHERE p.user_id = #{professorUserId}
-        AND c.course_code = #{courseId}
+      JOIN student s ON s.s_id = cr.s_id
+      JOIN class cls ON cls.c_id = cr.c_id AND cls.c_no = cr.c_no
+      JOIN lecture l ON l.no = cls.c_id
+      JOIN professor p ON p.p_id = cls.p_id
+      JOIN user_account ua ON ua.login_id = p.p_id
+      WHERE ua.user_id = #{professorUserId}
+        AND ua.role = 'PROFESSOR'
+        AND l.no = #{courseId}
         AND <include refid="divisionCondition" />
-        AND cs.status != 'CANCELLED'
-        AND sm.is_current = 1
+        AND cls.c_status != 'CANCELLED'
+        AND <include refid="currentSemesterCondition" />
         AND cr.status = 'PENDING'
     )
-    WHERE row_num &gt; #{offset}
-      AND row_num &lt;= #{offset} + #{size}
+    WHERE row_num &gt;
+      (GREATEST(COALESCE(#{page,jdbcType=INTEGER}, 1), 1) - 1)
+      * GREATEST(COALESCE(#{size,jdbcType=INTEGER}, 20), 1)
+      AND row_num &lt;=
+      GREATEST(COALESCE(#{page,jdbcType=INTEGER}, 1), 1)
+      * GREATEST(COALESCE(#{size,jdbcType=INTEGER}, 20), 1)
     ORDER BY row_num
   </select>
 
-  <select id="findRequestForProfessor" resultMap="CourseRequestInfoResultMap">
-    SELECT
-      cr.request_id AS request_pk,
-      TO_CHAR(cr.request_id) AS request_id,
-      cr.status,
-      su.user_id AS student_user_id,
-      pu.user_id AS professor_user_id,
-      cs.section_id,
-      c.course_name
-    FROM course_request cr
-    JOIN student s ON s.student_id = cr.student_id
-    JOIN user_account su ON su.user_id = s.user_id
-    JOIN course_section cs ON cs.section_id = cr.section_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN professor p ON p.professor_id = cs.professor_id
-    JOIN user_account pu ON pu.user_id = p.user_id
-    WHERE pu.user_id = #{professorUserId}
-      AND c.course_code = #{courseId}
-      AND <include refid="divisionCondition" />
-      AND TO_CHAR(cr.request_id) = #{requestId}
+  <select id="processCourseRequest" statementType="CALLABLE" parameterType="map">
+    { CALL PROCESS_COURSE_REQUEST(
+      #{professorUserId, mode=IN, jdbcType=NUMERIC},
+      #{courseId, mode=IN, jdbcType=VARCHAR},
+      #{division, mode=IN, jdbcType=VARCHAR},
+      #{requestId, mode=IN, jdbcType=VARCHAR},
+      #{status, mode=IN, jdbcType=VARCHAR},
+      #{result, mode=OUT, jdbcType=VARCHAR},
+      #{outRequestId, mode=OUT, jdbcType=VARCHAR},
+      #{outStatus, mode=OUT, jdbcType=VARCHAR},
+      #{outUpdatedAt, mode=OUT, jdbcType=TIMESTAMP, javaType=java.sql.Timestamp}
+    ) }
   </select>
-
-  <update id="updatePendingRequestStatus">
-    UPDATE course_request cr
-    SET
-      cr.status = #{status},
-      cr.processed_at = #{processedAt},
-      cr.processed_by_professor_id = (
-        SELECT p.professor_id
-        FROM professor p
-        WHERE p.user_id = #{professorUserId}
-      )
-    WHERE cr.status = 'PENDING'
-      AND TO_CHAR(cr.request_id) = #{requestId}
-      AND EXISTS (
-        SELECT 1
-        FROM course_section cs
-        JOIN course c ON c.course_id = cs.course_id
-        JOIN professor p ON p.professor_id = cs.professor_id
-        WHERE cs.section_id = cr.section_id
-          AND c.course_code = #{courseId}
-          AND <include refid="divisionCondition" />
-          AND p.user_id = #{professorUserId}
-      )
-  </update>
-
-  <insert id="insertResultNotification">
-    INSERT INTO notification (
-      notification_id,
-      recipient_user_id,
-      sender_user_id,
-      target_section_id,
-      target_request_id,
-      title,
-      body,
-      type,
-      is_read,
-      created_at
-    ) VALUES (
-      (SELECT COALESCE(MAX(notification_id), 0) + 1 FROM notification),
-      #{recipientUserId},
-      #{senderUserId},
-      #{targetSectionId},
-      #{targetRequestId},
-      #{title},
-      #{body},
-      #{type},
-      0,
-      #{createdAt}
-    )
-  </insert>
 </mapper>

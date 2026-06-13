@@ -4,13 +4,12 @@ import static com.example.backend.support.TestAuthentications.professorUser;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.backend.dto.professor.ProfessorReviewItem;
-import com.example.backend.dto.professor.ProfessorReviewItemAverages;
 import com.example.backend.dto.professor.ProfessorReviewResponse;
-import com.example.backend.dto.professor.ProfessorReviewSummary;
 import com.example.backend.mapper.ProfessorReviewMapper;
 import com.example.backend.service.ProfessorReviewService;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,8 +26,13 @@ class ProfessorReviewServiceTest {
 
   @Test
   void getReviewsReturnsSummaryItemAveragesAndAnonymousReviews() {
-    reviewMapper.summary = new ProfessorReviewSummary(4.5, 2, 4);
-    reviewMapper.itemAverages = new ProfessorReviewItemAverages(4.6, 4.5, 3.8, 4.7);
+    reviewMapper.avgRating = 4.5;
+    reviewMapper.participationRate = 50;
+    reviewMapper.participantCount = 2;
+    reviewMapper.itemOverall = 4.6;
+    reviewMapper.itemContent = 4.5;
+    reviewMapper.itemWorkload = 3.8;
+    reviewMapper.itemKindness = 4.7;
     reviewMapper.reviews.add(
         new ProfessorReviewItem(
             "REV_001", 5.0, "2026.05.10", "Good practice", "Many assignments", "Prepare SQL", "익명"));
@@ -56,8 +60,7 @@ class ProfessorReviewServiceTest {
 
   @Test
   void getReviewsReturnsDashWhenReviewDataIsEmpty() {
-    reviewMapper.summary = new ProfessorReviewSummary(null, 0, 0);
-    reviewMapper.itemAverages = new ProfessorReviewItemAverages(null, null, null, null);
+    reviewMapper.participantCount = 0;
 
     ProfessorReviewResponse response =
         reviewService.getReviews(professorUser(), "CSE301", "01", null, null);
@@ -70,12 +73,18 @@ class ProfessorReviewServiceTest {
     assertThat(response.itemAverages().workload()).isEqualTo("-");
     assertThat(response.itemAverages().kindness()).isEqualTo("-");
     assertThat(response.reviews()).isEmpty();
-    assertThat(reviewMapper.requestedSort).isEqualTo("LATEST");
+    assertThat(reviewMapper.requestedSort).isNull();
   }
 
   private static class FakeProfessorReviewMapper implements ProfessorReviewMapper {
-    private ProfessorReviewSummary summary;
-    private ProfessorReviewItemAverages itemAverages;
+    private String result = "SUCCESS";
+    private Double avgRating;
+    private Integer participationRate;
+    private Integer participantCount;
+    private Double itemOverall;
+    private Double itemContent;
+    private Double itemWorkload;
+    private Double itemKindness;
     private final List<ProfessorReviewItem> reviews = new ArrayList<>();
     private Long requestedProfessorUserId;
     private String requestedCourseId;
@@ -84,43 +93,21 @@ class ProfessorReviewServiceTest {
     private String requestedSort;
 
     @Override
-    public int existsCourse(Long professorUserId, String courseId, String division, String semester) {
-      requestedProfessorUserId = professorUserId;
-      requestedCourseId = courseId;
-      requestedDivision = division;
-      requestedSemester = semester;
-      return 1;
-    }
-
-    @Override
-    public ProfessorReviewSummary findSummary(
-        Long professorUserId, String courseId, String division, String semester) {
-      requestedProfessorUserId = professorUserId;
-      requestedCourseId = courseId;
-      requestedDivision = division;
-      requestedSemester = semester;
-      return summary;
-    }
-
-    @Override
-    public ProfessorReviewItemAverages findItemAverages(
-        Long professorUserId, String courseId, String division, String semester) {
-      requestedProfessorUserId = professorUserId;
-      requestedCourseId = courseId;
-      requestedDivision = division;
-      requestedSemester = semester;
-      return itemAverages;
-    }
-
-    @Override
-    public List<ProfessorReviewItem> findReviews(
-        Long professorUserId, String courseId, String division, String semester, String sort) {
-      requestedProfessorUserId = professorUserId;
-      requestedCourseId = courseId;
-      requestedDivision = division;
-      requestedSemester = semester;
-      requestedSort = sort;
-      return reviews;
+    public void callGetProfessorReviews(Map<String, Object> params) {
+      requestedProfessorUserId = (Long) params.get("professorUserId");
+      requestedCourseId = (String) params.get("courseId");
+      requestedDivision = (String) params.get("division");
+      requestedSemester = (String) params.get("semester");
+      requestedSort = (String) params.get("sort");
+      params.put("result", result);
+      params.put("avgRating", avgRating);
+      params.put("participationRate", participationRate);
+      params.put("participantCount", participantCount);
+      params.put("itemOverall", itemOverall);
+      params.put("itemContent", itemContent);
+      params.put("itemWorkload", itemWorkload);
+      params.put("itemKindness", itemKindness);
+      params.put("reviews", reviews);
     }
   }
 }

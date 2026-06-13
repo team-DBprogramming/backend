@@ -41,7 +41,35 @@ begin
              'PROCEDURE'
         from dual
       union all
+      select 'GET_PROFESSOR_REVIEWS',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'GET_PROFESSOR_STUDENT_LIST',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'GET_PROFESSOR_EXPORT_COURSE',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'GET_PROFESSOR_EXPORT_STUDENTS',
+             'PROCEDURE'
+        from dual
+      union all
       select 'V_PROFESSOR_DASHBOARD_CLASS',
+             'VIEW'
+        from dual
+      union all
+      select 'V_PROFESSOR_REVIEW_CLASS',
+             'VIEW'
+        from dual
+      union all
+      select 'V_PROFESSOR_STUDENT_CLASS',
+             'VIEW'
+        from dual
+      union all
+      select 'V_PROFESSOR_STUDENT_EXPORT',
              'VIEW'
         from dual
       union all
@@ -62,6 +90,18 @@ begin
         from dual
       union all
       select 'OPENAVAILABLECLASSCURSOR',
+              'PROCEDURE'
+         from dual
+      union all
+      select 'PROCESS_COURSE_REQUEST',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'SEND_PROFESSOR_MESSAGE',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'MARK_NOTIFICATION_AS_READ',
              'PROCEDURE'
         from dual
       union all
@@ -560,6 +600,7 @@ LEFT JOIN professor p
    ON p.p_id = ua.login_id
   AND ua.role = 'PROFESSOR';
 /
+
 CREATE OR REPLACE VIEW V_PROFESSOR_DASHBOARD_CLASS AS
 SELECT
    ua.user_id AS professor_user_id,
@@ -584,6 +625,64 @@ JOIN lecture l
 WHERE ua.role = 'PROFESSOR';
 /
 
+CREATE OR REPLACE VIEW V_PROFESSOR_REVIEW_CLASS AS
+SELECT
+   professor_user_id,
+   professor_id,
+   course_id,
+   course_name,
+   division_no,
+   division,
+   c_year,
+   c_semester,
+   c_status,
+   student_count
+FROM V_PROFESSOR_DASHBOARD_CLASS;
+/
+
+CREATE OR REPLACE VIEW V_PROFESSOR_STUDENT_CLASS AS
+SELECT
+   professor_user_id,
+   professor_id,
+   course_id,
+   course_name,
+   division_no,
+   division,
+   c_year,
+   c_semester,
+   c_status,
+   student_count
+FROM V_PROFESSOR_DASHBOARD_CLASS;
+/
+
+CREATE OR REPLACE VIEW V_PROFESSOR_STUDENT_EXPORT AS
+SELECT
+   dc.professor_user_id,
+   dc.professor_id,
+   dc.course_id,
+   dc.course_name,
+   dc.division_no,
+   dc.division,
+   dc.c_year,
+   dc.c_semester,
+   dc.c_status,
+   s.s_id AS student_id,
+   s.s_name AS name,
+   s.s_year AS grade,
+   s.s_major AS major,
+   e.e_status AS status,
+   TO_CHAR(e.e_date, 'YYYY-MM-DD HH24:MI') AS enrolled_at,
+   DBMS_LOB.SUBSTR(e.professor_note, 4000, 1) AS note
+FROM V_PROFESSOR_DASHBOARD_CLASS dc
+JOIN enroll e
+  ON e.c_id = dc.course_id
+ AND e.c_no = dc.division_no
+ AND e.e_year = dc.c_year
+ AND e.e_semester = dc.c_semester
+JOIN student s
+  ON s.s_id = e.s_id;
+/
+
 CREATE OR REPLACE VIEW V_NOTIFICATION_LIST AS
 SELECT
    TO_CHAR(n.notification_id) AS notification_id,
@@ -596,12 +695,107 @@ SELECT
    n.target_c_id AS target_course_id,
    CASE
       WHEN n.target_c_no IS NULL THEN NULL
-      ELSE TO_CHAR(n.target_c_no) || '遺꾨컲'
+      ELSE TO_CHAR(n.target_c_no) || '분반'
    END AS target_division,
    TO_CHAR(n.target_request_id) AS target_request_id,
    n.created_at AS sort_created_at,
    n.notification_id AS sort_notification_id
 FROM notification n;
+/
+
+CREATE OR REPLACE VIEW V_NOTIFICATION_DETAIL AS
+SELECT
+   n.notification_id,
+   TO_CHAR(n.notification_id) AS notification_id_text,
+   n.recipient_s_id,
+   n.title,
+   DBMS_LOB.SUBSTR(n.body, 4000, 1) AS body,
+   n.type,
+   n.is_read,
+   TO_CHAR(n.created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
+   COALESCE(sender_professor.p_name, sender_student.s_name) AS sender_name,
+   l.no AS course_id,
+   l.subject AS course_name,
+   CASE
+      WHEN c.c_no IS NULL THEN NULL
+      ELSE TO_CHAR(c.c_no) || '분반'
+   END AS division,
+   n.target_c_id AS target_course_id,
+   CASE
+      WHEN n.target_c_no IS NULL THEN NULL
+      ELSE TO_CHAR(n.target_c_no) || '분반'
+   END AS target_division,
+   TO_CHAR(n.target_request_id) AS target_request_id,
+   DBMS_LOB.SUBSTR(cr.reason, 4000, 1) AS request_reason
+FROM notification n
+LEFT JOIN student sender_student
+   ON sender_student.s_id = n.sender_s_id
+LEFT JOIN professor sender_professor
+   ON sender_professor.p_id = n.sender_p_id
+LEFT JOIN course_request cr
+   ON cr.request_id = n.target_request_id
+LEFT JOIN class c
+   ON c.c_id = COALESCE(n.target_c_id, cr.c_id)
+  AND c.c_no = COALESCE(n.target_c_no, cr.c_no)
+LEFT JOIN lecture l
+   ON l.no = c.c_id;
+/
+
+CREATE OR REPLACE PROCEDURE GET_NOTIFICATION_DETAIL(
+   p_student_id      IN student.s_id%TYPE,
+   p_notification_id IN notification.notification_id%TYPE,
+   p_result          OUT SYS_REFCURSOR
+)
+IS
+   v_notification_id notification.notification_id%TYPE;
+BEGIN
+   SELECT notification_id
+     INTO v_notification_id
+     FROM V_NOTIFICATION_DETAIL
+    WHERE recipient_s_id = p_student_id
+      AND notification_id = p_notification_id;
+
+   OPEN p_result FOR
+      SELECT
+         notification_id_text AS notification_id,
+         title,
+         body,
+         type,
+         is_read,
+         created_at,
+         sender_name,
+         course_id,
+         course_name,
+         division,
+         target_course_id,
+         target_division,
+         target_request_id,
+         request_reason
+      FROM V_NOTIFICATION_DETAIL
+      WHERE recipient_s_id = p_student_id
+        AND notification_id = p_notification_id;
+
+EXCEPTION
+   WHEN NO_DATA_FOUND THEN
+      RAISE_APPLICATION_ERROR(-20041, 'NOTIFICATION_NOT_FOUND');
+END;
+/
+
+CREATE OR REPLACE PROCEDURE MARK_NOTIFICATION_AS_READ(
+   p_student_id      IN student.s_id%TYPE,
+   p_notification_id IN notification.notification_id%TYPE
+)
+IS
+BEGIN
+   UPDATE notification n
+      SET n.is_read = 1
+    WHERE n.recipient_s_id = p_student_id
+      AND n.notification_id = p_notification_id;
+
+   IF SQL%ROWCOUNT = 0 THEN
+      RAISE_APPLICATION_ERROR(-20042, 'NOTIFICATION_NOT_FOUND');
+   END IF;
+END;
 /
 
 CREATE OR REPLACE PROCEDURE AUTHENTICATE_LOGIN(
@@ -1048,6 +1242,554 @@ BEGIN
       ORDER BY dc.course_name, dc.division_no;
 END;
 /
+
+CREATE OR REPLACE PROCEDURE GET_PROFESSOR_REVIEWS(
+   p_professor_user_id  IN user_account.user_id%TYPE,
+   p_course_id          IN class.c_id%TYPE,
+   p_division           IN VARCHAR2,
+   p_semester           IN VARCHAR2,
+   p_sort               IN VARCHAR2,
+   p_result             OUT VARCHAR2,
+   p_avg_rating         OUT NUMBER,
+   p_participation_rate OUT NUMBER,
+   p_participant_count  OUT NUMBER,
+   p_item_overall       OUT NUMBER,
+   p_item_content       OUT NUMBER,
+   p_item_workload      OUT NUMBER,
+   p_item_kindness      OUT NUMBER,
+   p_reviews            OUT SYS_REFCURSOR
+)
+IS
+   v_year              class.c_year%TYPE;
+   v_semester          class.c_semester%TYPE;
+   v_sort              VARCHAR2(20);
+   v_target_count      NUMBER;
+   v_total_students    NUMBER;
+
+   PROCEDURE open_empty_reviews IS
+   BEGIN
+      OPEN p_reviews FOR
+         SELECT
+            CAST(NULL AS VARCHAR2(40)) AS review_id,
+            CAST(NULL AS NUMBER) AS rating,
+            CAST(NULL AS VARCHAR2(20)) AS created_at,
+            CAST(NULL AS VARCHAR2(4000)) AS pros,
+            CAST(NULL AS VARCHAR2(4000)) AS cons,
+            CAST(NULL AS VARCHAR2(4000)) AS tip,
+            CAST(NULL AS VARCHAR2(40)) AS writer
+         FROM dual
+         WHERE 1 = 0;
+   END;
+BEGIN
+   p_result := 'SUCCESS';
+   p_avg_rating := NULL;
+   p_participation_rate := NULL;
+   p_participant_count := 0;
+   p_item_overall := NULL;
+   p_item_content := NULL;
+   p_item_workload := NULL;
+   p_item_kindness := NULL;
+
+   IF p_division IS NULL OR TRIM(p_division) IS NULL THEN
+      p_result := 'DIVISION_REQUIRED';
+      open_empty_reviews;
+      RETURN;
+   END IF;
+
+   IF p_semester IS NULL OR TRIM(p_semester) IS NULL THEN
+      v_year := Date2EnrollYear(SYSDATE);
+      v_semester := Date2EnrollSemester(SYSDATE);
+   ELSE
+      v_year := TO_NUMBER(REGEXP_SUBSTR(TRIM(p_semester), '^[0-9]{4}'));
+      v_semester := TO_NUMBER(REGEXP_SUBSTR(TRIM(p_semester), '-([12])', 1, 1, NULL, 1));
+   END IF;
+
+   v_sort := UPPER(TRIM(NVL(p_sort, 'LATEST')));
+   IF v_sort NOT IN ( 'LATEST', 'RATING_DESC', 'RATING_ASC' ) THEN
+      v_sort := 'LATEST';
+   END IF;
+
+   SELECT COUNT(*), NVL(SUM(student_count), 0)
+     INTO v_target_count, v_total_students
+     FROM V_PROFESSOR_REVIEW_CLASS dc
+    WHERE dc.professor_user_id = p_professor_user_id
+      AND dc.course_id = p_course_id
+      AND dc.c_status != 'CANCELLED'
+      AND dc.c_year = v_year
+      AND dc.c_semester = v_semester
+      AND (
+         LPAD(TO_CHAR(dc.division_no), 2, '0') = TRIM(p_division)
+         OR TO_CHAR(dc.division_no) = TRIM(p_division)
+         OR dc.division = TRIM(p_division)
+      );
+
+   IF v_target_count = 0 THEN
+      p_result := 'COURSE_NOT_FOUND';
+      open_empty_reviews;
+      RETURN;
+   END IF;
+
+   SELECT
+      ROUND(AVG(r.rating_overall), 1),
+      COUNT(r.review_id),
+      ROUND(AVG(r.rating_overall), 1),
+      ROUND(AVG(r.rating_content), 1),
+      ROUND(AVG(r.rating_workload), 1),
+      ROUND(AVG(r.rating_professor), 1)
+   INTO
+      p_avg_rating,
+      p_participant_count,
+      p_item_overall,
+      p_item_content,
+      p_item_workload,
+      p_item_kindness
+   FROM V_PROFESSOR_REVIEW_CLASS dc
+   JOIN enroll e
+     ON e.c_id = dc.course_id
+    AND e.c_no = dc.division_no
+    AND e.e_status = 'ENROLLED'
+   LEFT JOIN review r
+     ON r.e_id = e.e_id
+   WHERE dc.professor_user_id = p_professor_user_id
+     AND dc.course_id = p_course_id
+     AND dc.c_status != 'CANCELLED'
+     AND dc.c_year = v_year
+     AND dc.c_semester = v_semester
+     AND (
+        LPAD(TO_CHAR(dc.division_no), 2, '0') = TRIM(p_division)
+        OR TO_CHAR(dc.division_no) = TRIM(p_division)
+        OR dc.division = TRIM(p_division)
+     );
+
+   IF v_total_students > 0 THEN
+      p_participation_rate := ROUND(p_participant_count * 100 / v_total_students);
+   ELSE
+      p_participation_rate := NULL;
+   END IF;
+
+   OPEN p_reviews FOR
+      SELECT
+         TO_CHAR(r.review_id) AS review_id,
+         r.rating_overall AS rating,
+         TO_CHAR(r.created_at, 'YYYY.MM.DD') AS created_at,
+         DBMS_LOB.SUBSTR(r.pros, 4000, 1) AS pros,
+         DBMS_LOB.SUBSTR(r.cons, 4000, 1) AS cons,
+         DBMS_LOB.SUBSTR(r.advice, 4000, 1) AS tip,
+         '익명' AS writer
+      FROM V_PROFESSOR_REVIEW_CLASS dc
+      JOIN enroll e
+        ON e.c_id = dc.course_id
+       AND e.c_no = dc.division_no
+       AND e.e_status = 'ENROLLED'
+      JOIN review r
+        ON r.e_id = e.e_id
+      WHERE dc.professor_user_id = p_professor_user_id
+        AND dc.course_id = p_course_id
+        AND dc.c_status != 'CANCELLED'
+        AND dc.c_year = v_year
+        AND dc.c_semester = v_semester
+        AND (
+           LPAD(TO_CHAR(dc.division_no), 2, '0') = TRIM(p_division)
+           OR TO_CHAR(dc.division_no) = TRIM(p_division)
+           OR dc.division = TRIM(p_division)
+        )
+      ORDER BY
+         CASE WHEN v_sort = 'RATING_DESC' THEN r.rating_overall END DESC,
+         CASE WHEN v_sort = 'RATING_ASC' THEN r.rating_overall END ASC,
+         r.created_at DESC,
+         r.review_id DESC;
+EXCEPTION
+   WHEN VALUE_ERROR THEN
+      p_result := 'COURSE_NOT_FOUND';
+      p_avg_rating := NULL;
+      p_participation_rate := NULL;
+      p_participant_count := 0;
+      p_item_overall := NULL;
+      p_item_content := NULL;
+      p_item_workload := NULL;
+      p_item_kindness := NULL;
+      open_empty_reviews;
+   WHEN OTHERS THEN
+      p_result := 'COURSE_NOT_FOUND';
+      p_avg_rating := NULL;
+      p_participation_rate := NULL;
+      p_participant_count := 0;
+      p_item_overall := NULL;
+      p_item_content := NULL;
+      p_item_workload := NULL;
+      p_item_kindness := NULL;
+      open_empty_reviews;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE GET_PROFESSOR_STUDENT_LIST(
+   p_professor_user_id IN user_account.user_id%TYPE,
+   p_course_id         IN class.c_id%TYPE,
+   p_division          IN VARCHAR2,
+   p_keyword           IN VARCHAR2,
+   p_grade             IN student.s_year%TYPE,
+   p_major             IN student.s_major%TYPE,
+   p_page              IN NUMBER,
+   p_size              IN NUMBER,
+   p_result            OUT VARCHAR2,
+   p_summary           OUT SYS_REFCURSOR,
+   p_students          OUT SYS_REFCURSOR
+)
+IS
+   v_year         class.c_year%TYPE;
+   v_semester     class.c_semester%TYPE;
+   v_page         NUMBER;
+   v_size         NUMBER;
+   v_offset       NUMBER;
+   v_target_count NUMBER;
+   v_enrolled_status enroll.e_status%TYPE := 'ENROLLED';
+
+   PROCEDURE open_empty_cursors IS
+   BEGIN
+      OPEN p_summary FOR
+         SELECT
+            CAST(NULL AS VARCHAR2(100)) AS course_name,
+            CAST(NULL AS VARCHAR2(20)) AS course_id,
+            CAST(NULL AS VARCHAR2(20)) AS division,
+            CAST(NULL AS VARCHAR2(20)) AS semester,
+            CAST(NULL AS NUMBER) AS total_students,
+            CAST(NULL AS NUMBER) AS request_count
+         FROM dual
+         WHERE 1 = 0;
+
+      OPEN p_students FOR
+         SELECT
+            CAST(NULL AS VARCHAR2(20)) AS student_id,
+            CAST(NULL AS VARCHAR2(100)) AS name,
+            CAST(NULL AS NUMBER) AS grade,
+            CAST(NULL AS VARCHAR2(100)) AS major,
+            CAST(NULL AS NUMBER) AS is_retake
+         FROM dual
+         WHERE 1 = 0;
+   END;
+BEGIN
+   p_result := 'SUCCESS';
+   v_year := Date2EnrollYear(SYSDATE);
+   v_semester := Date2EnrollSemester(SYSDATE);
+   v_page := CASE WHEN p_page IS NULL OR p_page <= 0 THEN 1 ELSE p_page END;
+   v_size := CASE WHEN p_size IS NULL OR p_size <= 0 THEN 20 ELSE p_size END;
+   v_offset := (v_page - 1) * v_size;
+
+   IF p_division IS NULL OR TRIM(p_division) IS NULL THEN
+      p_result := 'DIVISION_REQUIRED';
+      open_empty_cursors;
+      RETURN;
+   END IF;
+
+   SELECT COUNT(*)
+     INTO v_target_count
+     FROM V_PROFESSOR_STUDENT_CLASS dc
+    WHERE dc.professor_user_id = p_professor_user_id
+      AND dc.course_id = p_course_id
+      AND dc.c_status != 'CANCELLED'
+      AND (
+         LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
+         OR TO_CHAR(dc.division_no) = TRIM(p_division)
+         OR dc.division = TRIM(p_division)
+         OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
+      );
+
+   IF v_target_count = 0 THEN
+      p_result := 'NOT_FOUND';
+      open_empty_cursors;
+      RETURN;
+   END IF;
+
+   OPEN p_summary FOR
+      SELECT
+         dc.course_name,
+         dc.course_id,
+         dc.division,
+         TO_CHAR(dc.c_year) || '-' || TO_CHAR(dc.c_semester) || '학기' AS semester,
+         dc.student_count AS total_students,
+         (
+            SELECT COUNT(*)
+            FROM course_request cr
+            WHERE cr.c_id = dc.course_id
+              AND cr.c_no = dc.division_no
+              AND cr.status = 'PENDING'
+         ) AS request_count
+      FROM V_PROFESSOR_STUDENT_CLASS dc
+      WHERE dc.professor_user_id = p_professor_user_id
+        AND dc.course_id = p_course_id
+        AND dc.c_status != 'CANCELLED'
+        AND (
+           LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
+           OR TO_CHAR(dc.division_no) = TRIM(p_division)
+           OR dc.division = TRIM(p_division)
+           OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+           OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
+        );
+
+   OPEN p_students FOR
+      SELECT
+         student_id,
+         name,
+         grade,
+         major,
+         is_retake
+      FROM (
+         SELECT
+            s.s_id AS student_id,
+            s.s_name AS name,
+            s.s_year AS grade,
+            s.s_major AS major,
+            CASE
+               WHEN EXISTS (
+                  SELECT 1
+                  FROM enroll prev_e
+                  WHERE prev_e.s_id = s.s_id
+                    AND prev_e.c_id = dc.course_id
+                    AND prev_e.e_status = 'COMPLETED'
+                    AND (
+                       prev_e.e_year != v_year
+                       OR prev_e.e_semester != v_semester
+                    )
+               ) THEN 1
+               ELSE 0
+            END AS is_retake,
+            ROW_NUMBER() OVER (ORDER BY s.s_id) AS row_num
+         FROM V_PROFESSOR_STUDENT_CLASS dc
+         JOIN enroll e
+           ON e.c_id = dc.course_id
+          AND e.c_no = dc.division_no
+          AND e.e_year = v_year
+          AND e.e_semester = v_semester
+          AND e.e_status = v_enrolled_status
+         JOIN student s
+           ON s.s_id = e.s_id
+         WHERE dc.professor_user_id = p_professor_user_id
+           AND dc.course_id = p_course_id
+           AND dc.c_status != 'CANCELLED'
+           AND (
+              LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
+              OR TO_CHAR(dc.division_no) = TRIM(p_division)
+              OR dc.division = TRIM(p_division)
+              OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+              OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
+           )
+           AND (
+              p_keyword IS NULL
+              OR TRIM(p_keyword) IS NULL
+              OR LOWER(s.s_id) LIKE '%' || LOWER(TRIM(p_keyword)) || '%'
+              OR LOWER(s.s_name) LIKE '%' || LOWER(TRIM(p_keyword)) || '%'
+           )
+           AND (p_grade IS NULL OR s.s_year = p_grade)
+           AND (
+              p_major IS NULL
+              OR TRIM(p_major) IS NULL
+              OR LOWER(s.s_major) LIKE '%' || LOWER(TRIM(p_major)) || '%'
+           )
+      )
+      WHERE row_num > v_offset
+        AND row_num <= v_offset + v_size
+      ORDER BY row_num;
+
+EXCEPTION
+   WHEN VALUE_ERROR THEN
+      p_result := 'NOT_FOUND';
+      open_empty_cursors;
+   WHEN OTHERS THEN
+      p_result := 'NOT_FOUND';
+      open_empty_cursors;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE GET_PROFESSOR_EXPORT_COURSE(
+   p_professor_user_id IN user_account.user_id%TYPE,
+   p_course_id         IN class.c_id%TYPE,
+   p_division          IN VARCHAR2,
+   p_result            OUT VARCHAR2,
+   p_course            OUT SYS_REFCURSOR
+)
+IS
+   v_year        class.c_year%TYPE;
+   v_semester    class.c_semester%TYPE;
+   v_division_no class.c_no%TYPE;
+   v_target_count NUMBER;
+
+   PROCEDURE open_empty_course IS
+   BEGIN
+      OPEN p_course FOR
+         SELECT
+            CAST(NULL AS VARCHAR2(100)) AS course_name,
+            CAST(NULL AS VARCHAR2(20)) AS course_id,
+            CAST(NULL AS VARCHAR2(20)) AS division,
+            CAST(NULL AS VARCHAR2(20)) AS semester
+         FROM dual
+         WHERE 1 = 0;
+   END;
+BEGIN
+   p_result := 'SUCCESS';
+   v_year := Date2EnrollYear(SYSDATE);
+   v_semester := Date2EnrollSemester(SYSDATE);
+
+   IF p_division IS NULL OR TRIM(p_division) IS NULL THEN
+      p_result := 'DIVISION_REQUIRED';
+      open_empty_course;
+      RETURN;
+   END IF;
+
+   SELECT COUNT(*), MIN(dc.division_no)
+     INTO v_target_count, v_division_no
+     FROM V_PROFESSOR_DASHBOARD_CLASS dc
+    WHERE dc.professor_user_id = p_professor_user_id
+      AND dc.course_id = p_course_id
+      AND dc.c_status != 'CANCELLED'
+      AND dc.c_year = v_year
+      AND dc.c_semester = v_semester
+      AND (
+         LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
+         OR TO_CHAR(dc.division_no) = TRIM(p_division)
+         OR dc.division = TRIM(p_division)
+         OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
+         OR TO_CHAR(dc.division_no) || '遺꾨컲' = TRIM(p_division)
+         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
+      );
+
+   IF v_target_count = 0 THEN
+      p_result := 'COURSE_NOT_FOUND';
+      open_empty_course;
+      RETURN;
+   END IF;
+
+   OPEN p_course FOR
+      SELECT
+         dc.course_name,
+         dc.course_id,
+         dc.division,
+         TO_CHAR(dc.c_year) || '-' || TO_CHAR(dc.c_semester) || '학기' AS semester
+      FROM V_PROFESSOR_DASHBOARD_CLASS dc
+      WHERE dc.professor_user_id = p_professor_user_id
+        AND dc.course_id = p_course_id
+        AND dc.division_no = v_division_no
+        AND dc.c_status != 'CANCELLED'
+        AND dc.c_year = v_year
+        AND dc.c_semester = v_semester;
+EXCEPTION
+   WHEN VALUE_ERROR THEN
+      p_result := 'COURSE_NOT_FOUND';
+      open_empty_course;
+   WHEN OTHERS THEN
+      p_result := 'COURSE_NOT_FOUND';
+      open_empty_course;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE GET_PROFESSOR_EXPORT_STUDENTS(
+   p_professor_user_id IN user_account.user_id%TYPE,
+   p_course_id         IN class.c_id%TYPE,
+   p_division          IN VARCHAR2,
+   p_keyword           IN VARCHAR2,
+   p_grade             IN student.s_year%TYPE,
+   p_major             IN student.s_major%TYPE,
+   p_result            OUT VARCHAR2,
+   p_rows              OUT SYS_REFCURSOR
+)
+IS
+   v_year         class.c_year%TYPE;
+   v_semester     class.c_semester%TYPE;
+   v_division_no  class.c_no%TYPE;
+   v_student_id   student.s_id%TYPE;
+   v_target_count NUMBER;
+
+   PROCEDURE open_empty_rows IS
+   BEGIN
+      OPEN p_rows FOR
+         SELECT
+            CAST(NULL AS VARCHAR2(20)) AS student_id,
+            CAST(NULL AS VARCHAR2(100)) AS name,
+            CAST(NULL AS NUMBER) AS grade,
+            CAST(NULL AS VARCHAR2(100)) AS major,
+            CAST(NULL AS VARCHAR2(20)) AS status,
+            CAST(NULL AS VARCHAR2(20)) AS enrolled_at,
+            CAST(NULL AS VARCHAR2(4000)) AS note
+         FROM dual
+         WHERE 1 = 0;
+   END;
+BEGIN
+   p_result := 'SUCCESS';
+   v_year := Date2EnrollYear(SYSDATE);
+   v_semester := Date2EnrollSemester(SYSDATE);
+   v_student_id := NULL;
+
+   IF p_division IS NULL OR TRIM(p_division) IS NULL THEN
+      p_result := 'DIVISION_REQUIRED';
+      open_empty_rows;
+      RETURN;
+   END IF;
+
+   SELECT COUNT(*), MIN(dc.division_no)
+     INTO v_target_count, v_division_no
+     FROM V_PROFESSOR_DASHBOARD_CLASS dc
+    WHERE dc.professor_user_id = p_professor_user_id
+      AND dc.course_id = p_course_id
+      AND dc.c_status != 'CANCELLED'
+      AND dc.c_year = v_year
+      AND dc.c_semester = v_semester
+      AND (
+         LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
+         OR TO_CHAR(dc.division_no) = TRIM(p_division)
+         OR dc.division = TRIM(p_division)
+         OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
+         OR TO_CHAR(dc.division_no) || '遺꾨컲' = TRIM(p_division)
+         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
+      );
+
+   IF v_target_count = 0 THEN
+      p_result := 'COURSE_NOT_FOUND';
+      open_empty_rows;
+      RETURN;
+   END IF;
+
+   OPEN p_rows FOR
+      SELECT
+         se.student_id,
+         se.name,
+         se.grade,
+         se.major,
+         se.status,
+         se.enrolled_at,
+         se.note
+      FROM V_PROFESSOR_STUDENT_EXPORT se
+      WHERE se.professor_user_id = p_professor_user_id
+        AND se.course_id = p_course_id
+        AND se.division_no = v_division_no
+        AND se.c_status != 'CANCELLED'
+        AND se.c_year = v_year
+        AND se.c_semester = v_semester
+        AND se.status = 'ENROLLED'
+        AND (
+           p_keyword IS NULL
+           OR TRIM(p_keyword) IS NULL
+           OR LOWER(se.student_id) LIKE '%' || LOWER(TRIM(p_keyword)) || '%'
+           OR LOWER(se.name) LIKE '%' || LOWER(TRIM(p_keyword)) || '%'
+        )
+        AND (p_grade IS NULL OR se.grade = p_grade)
+        AND (
+           p_major IS NULL
+           OR TRIM(p_major) IS NULL
+           OR LOWER(se.major) LIKE '%' || LOWER(TRIM(p_major)) || '%'
+        )
+      ORDER BY se.student_id;
+EXCEPTION
+   WHEN VALUE_ERROR THEN
+      p_result := 'COURSE_NOT_FOUND';
+      open_empty_rows;
+   WHEN OTHERS THEN
+      p_result := 'COURSE_NOT_FOUND';
+      open_empty_rows;
+END;
+/
+
 CREATE OR REPLACE PROCEDURE InsertEnroll(
     sStudentId   IN student.s_id%TYPE,
     sCourseId    IN class.c_id%TYPE,
@@ -1623,8 +2365,307 @@ END;
 /
 
 ------------------------------------------------------------
+-- 교수 수강 요청 승인/거절 처리
+-- 상태 정규화, 예외 분기, 요청 갱신, 결과 알림 생성을 PL/SQL에서 처리
+------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE PROCESS_COURSE_REQUEST(
+    p_professor_user_id IN user_account.user_id%TYPE,
+    p_c_id              IN class.c_id%TYPE,
+    p_division          IN VARCHAR2,
+    p_request_id        IN VARCHAR2,
+    p_status            IN VARCHAR2,
+    p_result            OUT VARCHAR2,
+    p_out_request_id    OUT VARCHAR2,
+    p_out_status        OUT course_request.status%TYPE,
+    p_out_updated_at    OUT TIMESTAMP
+)
+IS
+    v_professor_id professor.p_id%TYPE;
+    v_request_pk   course_request.request_id%TYPE;
+    v_student_id   student.s_id%TYPE;
+    v_c_no         class.c_no%TYPE;
+    v_course_name  lecture.subject%TYPE;
+    v_old_status   course_request.status%TYPE;
+    v_new_status   course_request.status%TYPE;
+    v_updated_at   TIMESTAMP;
+BEGIN
+    p_result := NULL;
+    p_out_request_id := NULL;
+    p_out_status := NULL;
+    p_out_updated_at := NULL;
+
+    IF p_division IS NULL OR TRIM(p_division) IS NULL THEN
+        p_result := 'DIVISION_REQUIRED';
+        RETURN;
+    END IF;
+
+    IF p_status IS NULL OR TRIM(p_status) IS NULL THEN
+        p_result := 'INVALID_STATUS';
+        RETURN;
+    END IF;
+
+    v_new_status := UPPER(TRIM(p_status));
+
+    IF v_new_status NOT IN ('APPROVED', 'REJECTED') THEN
+        p_result := 'INVALID_STATUS';
+        RETURN;
+    END IF;
+
+    SELECT p.p_id
+    INTO v_professor_id
+    FROM user_account ua
+    JOIN professor p
+      ON p.p_id = ua.login_id
+    WHERE ua.user_id = p_professor_user_id
+      AND ua.role = 'PROFESSOR';
+
+    SELECT
+        cr.request_id,
+        cr.s_id,
+        cr.status,
+        cls.c_no,
+        l.subject
+    INTO
+        v_request_pk,
+        v_student_id,
+        v_old_status,
+        v_c_no,
+        v_course_name
+    FROM course_request cr
+    JOIN class cls
+      ON cls.c_id = cr.c_id
+     AND cls.c_no = cr.c_no
+    JOIN lecture l
+      ON l.no = cls.c_id
+    WHERE TO_CHAR(cr.request_id) = TRIM(p_request_id)
+      AND cr.c_id = p_c_id
+      AND cls.p_id = v_professor_id
+      AND cls.c_status != 'CANCELLED'
+      AND cls.c_year = Date2EnrollYear(SYSDATE)
+      AND cls.c_semester = Date2EnrollSemester(SYSDATE)
+      AND (
+          LPAD(TO_CHAR(cls.c_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
+          OR TO_CHAR(cls.c_no) || '분반' = TRIM(p_division)
+          OR LPAD(TO_CHAR(cls.c_no), 2, '0') || '분반' = TRIM(p_division)
+      )
+    FOR UPDATE OF cr.status;
+
+    IF v_old_status != 'PENDING' THEN
+        p_result := 'ALREADY_PROCESSED';
+        RETURN;
+    END IF;
+
+    v_updated_at := CAST(SYSTIMESTAMP AS TIMESTAMP);
+
+    UPDATE course_request
+    SET status = v_new_status,
+        processed_at = v_updated_at,
+        processed_by_p_id = v_professor_id
+    WHERE request_id = v_request_pk
+      AND status = 'PENDING';
+
+    IF SQL%ROWCOUNT = 0 THEN
+        p_result := 'ALREADY_PROCESSED';
+        RETURN;
+    END IF;
+
+    INSERT INTO notification (
+        recipient_s_id,
+        sender_p_id,
+        target_c_id,
+        target_c_no,
+        target_request_id,
+        title,
+        body,
+        type,
+        is_read,
+        created_at
+    )
+    VALUES (
+        v_student_id,
+        v_professor_id,
+        p_c_id,
+        v_c_no,
+        v_request_pk,
+        v_course_name || ' 수강 요청 결과',
+        v_course_name || ' 수강 요청이 '
+            || CASE v_new_status
+                WHEN 'APPROVED' THEN '승인'
+                ELSE '거절'
+               END
+            || '되었습니다.',
+        'COURSE_REQUEST_RESULT',
+        0,
+        v_updated_at
+    );
+
+    p_result := 'SUCCESS';
+    p_out_request_id := TO_CHAR(v_request_pk);
+    p_out_status := v_new_status;
+    p_out_updated_at := v_updated_at;
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        p_result := 'NOT_FOUND';
+
+    WHEN OTHERS THEN
+        p_result := 'SQLCODE=' || SQLCODE;
+END;
+/
+
+------------------------------------------------------------
 -- 학생 + 과목 + 분반 기준 장바구니 삭제
 ------------------------------------------------------------
+------------------------------------------------------------
+-- 교수 메시지 전송
+-- 수신자 검증, 중복 제거, 반복 알림 생성을 PL/SQL에서 처리
+------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE SEND_PROFESSOR_MESSAGE(
+    p_professor_user_id IN user_account.user_id%TYPE,
+    p_c_id              IN class.c_id%TYPE,
+    p_division          IN VARCHAR2,
+    p_student_ids       IN VARCHAR2,
+    p_message           IN notification.body%TYPE,
+    p_result            OUT VARCHAR2,
+    p_sent_count        OUT NUMBER
+)
+IS
+    v_professor_id    professor.p_id%TYPE;
+    v_c_no            class.c_no%TYPE;
+    v_requested_count NUMBER := 0;
+    v_valid_count     NUMBER := 0;
+    v_created_at      TIMESTAMP := CAST(SYSTIMESTAMP AS TIMESTAMP);
+
+    CURSOR recipient_cursor IS
+        WITH requested_students AS (
+            SELECT DISTINCT TRIM(REGEXP_SUBSTR(p_student_ids, '[^,]+', 1, LEVEL)) AS s_id
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(p_student_ids, '[^,]+', 1, LEVEL) IS NOT NULL
+        )
+        SELECT s.s_id
+        FROM requested_students rs
+        JOIN student s
+          ON s.s_id = rs.s_id
+        JOIN enroll e
+          ON e.s_id = s.s_id
+         AND e.c_id = p_c_id
+         AND e.c_no = v_c_no
+         AND e.e_status = 'ENROLLED'
+         AND e.e_year = Date2EnrollYear(SYSDATE)
+         AND e.e_semester = Date2EnrollSemester(SYSDATE)
+        WHERE rs.s_id IS NOT NULL;
+BEGIN
+    p_result := NULL;
+    p_sent_count := 0;
+
+    IF p_c_id IS NULL
+        OR p_division IS NULL
+        OR TRIM(p_division) IS NULL
+        OR p_student_ids IS NULL
+        OR TRIM(p_student_ids) IS NULL
+        OR p_message IS NULL THEN
+        p_result := 'INVALID_REQUEST';
+        RETURN;
+    END IF;
+
+    SELECT p.p_id, cls.c_no
+    INTO v_professor_id, v_c_no
+    FROM user_account ua
+    JOIN professor p
+      ON p.p_id = ua.login_id
+    JOIN class cls
+      ON cls.p_id = p.p_id
+    WHERE ua.user_id = p_professor_user_id
+      AND ua.role = 'PROFESSOR'
+      AND cls.c_id = p_c_id
+      AND cls.c_status != 'CANCELLED'
+      AND cls.c_year = Date2EnrollYear(SYSDATE)
+      AND cls.c_semester = Date2EnrollSemester(SYSDATE)
+      AND (
+          LPAD(TO_CHAR(cls.c_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
+          OR TO_CHAR(cls.c_no) || '분반' = TRIM(p_division)
+          OR LPAD(TO_CHAR(cls.c_no), 2, '0') || '분반' = TRIM(p_division)
+          OR TO_CHAR(cls.c_no) || '遺꾨컲' = TRIM(p_division)
+          OR LPAD(TO_CHAR(cls.c_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
+      );
+
+    WITH requested_students AS (
+        SELECT DISTINCT TRIM(REGEXP_SUBSTR(p_student_ids, '[^,]+', 1, LEVEL)) AS s_id
+        FROM dual
+        CONNECT BY REGEXP_SUBSTR(p_student_ids, '[^,]+', 1, LEVEL) IS NOT NULL
+    )
+    SELECT COUNT(*)
+    INTO v_requested_count
+    FROM requested_students
+    WHERE s_id IS NOT NULL;
+
+    IF v_requested_count = 0 THEN
+        p_result := 'INVALID_REQUEST';
+        RETURN;
+    END IF;
+
+    WITH requested_students AS (
+        SELECT DISTINCT TRIM(REGEXP_SUBSTR(p_student_ids, '[^,]+', 1, LEVEL)) AS s_id
+        FROM dual
+        CONNECT BY REGEXP_SUBSTR(p_student_ids, '[^,]+', 1, LEVEL) IS NOT NULL
+    )
+    SELECT COUNT(*)
+    INTO v_valid_count
+    FROM requested_students rs
+    JOIN enroll e
+      ON e.s_id = rs.s_id
+     AND e.c_id = p_c_id
+     AND e.c_no = v_c_no
+     AND e.e_status = 'ENROLLED'
+     AND e.e_year = Date2EnrollYear(SYSDATE)
+     AND e.e_semester = Date2EnrollSemester(SYSDATE)
+    WHERE rs.s_id IS NOT NULL;
+
+    IF v_valid_count != v_requested_count THEN
+        p_result := 'INVALID_RECIPIENT';
+        RETURN;
+    END IF;
+
+    FOR recipient IN recipient_cursor LOOP
+        INSERT INTO notification (
+            recipient_s_id,
+            sender_p_id,
+            target_c_id,
+            target_c_no,
+            title,
+            body,
+            type,
+            is_read,
+            created_at
+        )
+        VALUES (
+            recipient.s_id,
+            v_professor_id,
+            p_c_id,
+            v_c_no,
+            '교수님으로부터 메시지가 도착했습니다.',
+            p_message,
+            'PROFESSOR_MESSAGE',
+            0,
+            v_created_at
+        );
+
+        p_sent_count := p_sent_count + 1;
+    END LOOP;
+
+    p_result := 'SUCCESS';
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        p_result := 'COURSE_NOT_FOUND';
+        p_sent_count := 0;
+
+    WHEN OTHERS THEN
+        p_result := 'SQLCODE=' || SQLCODE;
+        p_sent_count := 0;
+END;
+/
+
 CREATE OR REPLACE PROCEDURE DELETE_CART_BY_SECTION(
     p_s_id   IN cart_item.s_id%TYPE,
     p_c_id   IN cart_item.c_id%TYPE,

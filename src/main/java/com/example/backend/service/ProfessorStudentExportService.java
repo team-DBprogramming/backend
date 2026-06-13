@@ -12,7 +12,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.springframework.stereotype.Service;
@@ -23,7 +25,6 @@ public class ProfessorStudentExportService {
 
   private static final String XLSX_CONTENT_TYPE =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-  private static final String CSV_CONTENT_TYPE = "text/csv;charset=UTF-8";
 
   private final ProfessorStudentExportMapper exportMapper;
   private final Clock clock;
@@ -45,24 +46,61 @@ public class ProfessorStudentExportService {
     Long professorUserId = currentUser.requireProfessorUserId();
     String normalizedDivision = normalizeRequiredDivision(division);
     String normalizedFormat = normalizeFormat(format);
-    ProfessorStudentExportCourse course =
-        exportMapper.findCourse(professorUserId, courseId, normalizedDivision);
-    if (course == null) {
+    ProfessorStudentExportCourse course = getCourse(professorUserId, courseId, normalizedDivision);
+    List<ProfessorStudentExportRow> rows =
+        getStudents(professorUserId, courseId, normalizedDivision, normalize(keyword), grade, normalize(major));
+
+    return new ProfessorStudentExportFile(
+        filename(course, normalizedFormat), XLSX_CONTENT_TYPE, toXlsx(rows));
+  }
+
+  private ProfessorStudentExportCourse getCourse(
+      Long professorUserId, String courseId, String division) {
+    Map<String, Object> params = new HashMap<>();
+    params.put("professorUserId", professorUserId);
+    params.put("courseId", courseId);
+    params.put("division", division);
+    exportMapper.callGetExportCourse(params);
+    handleResult(stringValue(params.get("result")));
+    List<ProfessorStudentExportCourse> courses = listValue(params.get("course"));
+    if (courses.isEmpty()) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
     }
-    List<ProfessorStudentExportRow> rows =
-        exportMapper.findStudents(
-            professorUserId, courseId, normalizedDivision, normalize(keyword), grade, normalize(major));
-    String filename = filename(course, normalizedFormat);
-    byte[] bytes = "xlsx".equals(normalizedFormat) ? toXlsx(rows) : toCsv(rows);
-    String contentType = "xlsx".equals(normalizedFormat) ? XLSX_CONTENT_TYPE : CSV_CONTENT_TYPE;
+    return courses.get(0);
+  }
 
-    return new ProfessorStudentExportFile(filename, contentType, bytes);
+  private List<ProfessorStudentExportRow> getStudents(
+      Long professorUserId,
+      String courseId,
+      String division,
+      String keyword,
+      Integer grade,
+      String major) {
+    Map<String, Object> params = new HashMap<>();
+    params.put("professorUserId", professorUserId);
+    params.put("courseId", courseId);
+    params.put("division", division);
+    params.put("keyword", keyword);
+    params.put("grade", grade);
+    params.put("major", major);
+    exportMapper.callGetExportStudents(params);
+    handleResult(stringValue(params.get("result")));
+    return listValue(params.get("rows"));
+  }
+
+  private void handleResult(String result) {
+    if (result == null || "SUCCESS".equals(result)) {
+      return;
+    }
+    if ("DIVISION_REQUIRED".equals(result)) {
+      throw new ProfessorHandler(ErrorStatus.PROFESSOR_DIVISION_REQUIRED);
+    }
+    throw new ProfessorHandler(ErrorStatus.PROFESSOR_REQUEST_NOT_FOUND);
   }
 
   private String normalizeFormat(String format) {
     String normalized = normalize(format);
-    if (!"xlsx".equals(normalized) && !"csv".equals(normalized)) {
+    if (!"xlsx".equals(normalized)) {
       throw new ProfessorHandler(ErrorStatus.PROFESSOR_EXPORT_INVALID_FORMAT);
     }
     return normalized;
@@ -84,28 +122,6 @@ public class ProfessorStudentExportService {
         + LocalDate.now(clock)
         + "."
         + format;
-  }
-
-  private byte[] toCsv(List<ProfessorStudentExportRow> rows) {
-    StringBuilder csv = new StringBuilder("\uFEFF");
-    csv.append("studentId,name,grade,major,status,enrolledAt,note\n");
-    for (ProfessorStudentExportRow row : rows) {
-      csv.append(csv(row.studentId()))
-          .append(',')
-          .append(csv(row.name()))
-          .append(',')
-          .append(row.grade())
-          .append(',')
-          .append(csv(row.major()))
-          .append(',')
-          .append(csv(row.status()))
-          .append(',')
-          .append(csv(row.enrolledAt()))
-          .append(',')
-          .append(csv(row.note()))
-          .append('\n');
-    }
-    return csv.toString().getBytes(StandardCharsets.UTF_8);
   }
 
   private byte[] toXlsx(List<ProfessorStudentExportRow> rows) {
@@ -209,11 +225,6 @@ public class ProfessorStudentExportService {
         """;
   }
 
-  private String csv(String value) {
-    String safe = value == null ? "" : value;
-    return "\"" + safe.replace("\"", "\"\"") + "\"";
-  }
-
   private String xml(String value) {
     String safe = value == null ? "" : value;
     return safe
@@ -234,5 +245,14 @@ public class ProfessorStudentExportService {
 
   private boolean isBlank(String value) {
     return value == null || value.trim().isEmpty();
+  }
+
+  private String stringValue(Object value) {
+    return value == null ? null : String.valueOf(value);
+  }
+
+  @SuppressWarnings("unchecked")
+  private <T> List<T> listValue(Object value) {
+    return value instanceof List<?> list ? (List<T>) list : List.of();
   }
 }

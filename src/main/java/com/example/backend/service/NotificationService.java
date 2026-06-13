@@ -1,11 +1,12 @@
 package com.example.backend.service;
 
-import com.example.backend.apiPayload.code.status.ErrorStatus;
-import com.example.backend.apiPayload.exception.handler.NotificationHandler;
 import com.example.backend.dto.notification.NotificationDetailResponse;
 import com.example.backend.dto.notification.NotificationListResponse;
 import com.example.backend.mapper.NotificationMapper;
 import com.example.backend.security.AuthenticatedUser;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,16 +26,23 @@ public class NotificationService {
 
   @Transactional(readOnly = true)
   public NotificationDetailResponse getNotification(AuthenticatedUser currentUser, String notificationId) {
-    NotificationDetailResponse notification =
-        notificationMapper.findNotification(currentUser.requireStudentId(), notificationId);
-    if (notification == null) {
-      throw new NotificationHandler(ErrorStatus.NOTIFICATION_NOT_FOUND);
-    }
-    return notification;
+    Map<String, Object> params = new HashMap<>();
+    params.put("studentId", currentUser.requireStudentId());
+    params.put("notificationId", notificationId);
+    notificationMapper.callGetNotificationDetail(params);
+    return firstDetail(params.get("result"));
   }
 
   @Transactional
   public void markAsRead(AuthenticatedUser currentUser, String notificationId) {
-    notificationMapper.markAsRead(currentUser.requireStudentId(), notificationId);
+    notificationMapper.callMarkNotificationAsRead(currentUser.requireStudentId(), notificationId);
+  }
+
+  @SuppressWarnings("unchecked")
+  private NotificationDetailResponse firstDetail(Object value) {
+    if (value instanceof List<?> rows && !rows.isEmpty()) {
+      return (NotificationDetailResponse) rows.get(0);
+    }
+    return null;
   }
 }

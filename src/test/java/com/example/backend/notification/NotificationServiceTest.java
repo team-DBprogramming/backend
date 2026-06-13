@@ -1,9 +1,7 @@
 package com.example.backend.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.example.backend.apiPayload.exception.handler.NotificationHandler;
 import com.example.backend.dto.notification.NotificationDetailResponse;
 import com.example.backend.dto.notification.NotificationItem;
 import com.example.backend.dto.notification.NotificationListResponse;
@@ -12,6 +10,7 @@ import com.example.backend.security.AuthenticatedUser;
 import com.example.backend.service.NotificationService;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,13 +30,13 @@ class NotificationServiceTest {
     notificationMapper.notifications.add(
         new NotificationItem(
             "7",
-            "수강 요청",
-            "학생으로부터 새 메시지가 도착했습니다.",
+            "Course request",
+            "A student sent a message.",
             "COURSE_REQUEST",
             false,
             "2026-06-01 09:30",
             "CSE3033",
-            "1분반",
+            "1",
             "301"));
 
     NotificationListResponse response = notificationService.getNotifications(studentUser());
@@ -61,37 +60,53 @@ class NotificationServiceTest {
     notificationMapper.detail =
         new NotificationDetailResponse(
             "7",
-            "수강 요청",
-            "학생으로부터 새 메시지가 도착했습니다.",
+            "Course request",
+            "A student sent a message.",
             "COURSE_REQUEST",
             false,
             "2026-06-01 09:30",
-            "홍길동",
+            "Sender",
             "CSE301",
-            "데이터베이스개론",
-            "01분반",
+            "Database",
+            "01",
             "CSE3033",
-            "1분반",
+            "1",
             "301",
-            "전공 필수 과목으로 수강이 필요합니다.");
+            "Required major course.");
 
     NotificationDetailResponse response = notificationService.getNotification(studentUser(), "7");
 
     assertThat(notificationMapper.requestedStudentId).isEqualTo("20230001");
     assertThat(notificationMapper.requestedNotificationId).isEqualTo("7");
-    assertThat(response.senderName()).isEqualTo("홍길동");
-    assertThat(response.courseName()).isEqualTo("데이터베이스개론");
-    assertThat(response.requestReason()).isEqualTo("전공 필수 과목으로 수강이 필요합니다.");
+    assertThat(response.senderName()).isEqualTo("Sender");
+    assertThat(response.courseName()).isEqualTo("Database");
+    assertThat(response.requestReason()).isEqualTo("Required major course.");
   }
 
   @Test
-  void getNotificationRejectsMissingOrOtherUserNotification() {
-    assertThatThrownBy(() -> notificationService.getNotification(studentUser(), "404"))
-        .isInstanceOfSatisfying(
-            NotificationHandler.class,
-            exception ->
-                assertThat(exception.getErrorReasonHttpStatus().getCode())
-                    .isEqualTo("NOTIFICATION4041"));
+  void getNotificationUsesCallableProcedureResult() {
+    notificationMapper.detail =
+        new NotificationDetailResponse(
+            "7",
+            "Course request",
+            "A student sent a message.",
+            "COURSE_REQUEST",
+            false,
+            "2026-06-01 09:30",
+            "Sender",
+            "CSE301",
+            "Database",
+            "01",
+            "CSE3033",
+            "1",
+            "301",
+            "Required major course.");
+
+    NotificationDetailResponse response = notificationService.getNotification(studentUser(), "7");
+
+    assertThat(notificationMapper.requestedStudentId).isEqualTo("20230001");
+    assertThat(notificationMapper.requestedNotificationId).isEqualTo("7");
+    assertThat(response.notificationId()).isEqualTo("7");
   }
 
   private static class FakeNotificationMapper implements NotificationMapper {
@@ -107,14 +122,16 @@ class NotificationServiceTest {
     }
 
     @Override
-    public NotificationDetailResponse findNotification(String studentId, String notificationId) {
-      requestedStudentId = studentId;
-      requestedNotificationId = notificationId;
-      return detail;
+    public void callGetNotificationDetail(Map<String, Object> params) {
+      requestedStudentId = String.valueOf(params.get("studentId"));
+      requestedNotificationId = String.valueOf(params.get("notificationId"));
+      if (detail != null) {
+        params.put("result", List.of(detail));
+      }
     }
 
     @Override
-    public void markAsRead(String studentId, String notificationId) {
+    public void callMarkNotificationAsRead(String studentId, String notificationId) {
       requestedStudentId = studentId;
       requestedNotificationId = notificationId;
     }

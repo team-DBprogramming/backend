@@ -1,8 +1,7 @@
 package com.example.backend.professor;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static com.example.backend.support.TestAuthentications.professorUser;
-import static com.example.backend.support.TestAuthentications.studentUser;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
@@ -13,10 +12,10 @@ import com.example.backend.mapper.ProfessorStudentExportMapper;
 import com.example.backend.service.ProfessorStudentExportService;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,89 +33,74 @@ class ProfessorStudentExportServiceTest {
   }
 
   @Test
-  void exportXlsxUsesFiltersAndFeatureSpecFileName() {
-    exportMapper.course =
-        new ProfessorStudentExportCourse("데이터베이스개론", "CSE301", "01분반", "2026-1학기");
-    exportMapper.rows.add(
+  void exportXlsxUsesCallableProceduresAndFeatureSpecFileName() {
+    exportMapper.courseRows.add(
+        new ProfessorStudentExportCourse("Database", "CSE301", "01분반", "2026-1학기"));
+    exportMapper.studentRows.add(
         new ProfessorStudentExportRow(
-            "2024111111", "홍길동", 3, "컴퓨터공학과", "ENROLLED", "2026-02-09 09:12", null));
+            "2024111111", "Student One", 3, "Computer Science", "ENROLLED", "2026-02-09 09:12", null));
 
     ProfessorStudentExportFile file =
-        exportService.exportStudents(professorUser(), "CSE301", "01", "xlsx", "홍", 3, "컴퓨터");
+        exportService.exportStudents(
+            professorUser(), "CSE301", "01", "xlsx", "student", 3, "computer");
 
-    assertThat(exportMapper.requestedProfessorUserId).isEqualTo(10L);
-    assertThat(exportMapper.requestedCourseId).isEqualTo("CSE301");
-    assertThat(exportMapper.requestedDivision).isEqualTo("01");
-    assertThat(exportMapper.requestedKeyword).isEqualTo("홍");
-    assertThat(exportMapper.requestedGrade).isEqualTo(3);
-    assertThat(exportMapper.requestedMajor).isEqualTo("컴퓨터");
-    assertThat(file.filename()).isEqualTo("학생관리_데이터베이스개론_2026-1학기_2026-05-31.xlsx");
+    assertThat(exportMapper.courseParams)
+        .containsEntry("professorUserId", 10L)
+        .containsEntry("courseId", "CSE301")
+        .containsEntry("division", "01");
+    assertThat(exportMapper.studentParams)
+        .containsEntry("professorUserId", 10L)
+        .containsEntry("courseId", "CSE301")
+        .containsEntry("division", "01")
+        .containsEntry("keyword", "student")
+        .containsEntry("grade", 3)
+        .containsEntry("major", "computer");
+    assertThat(file.filename()).isEqualTo("학생관리_Database_2026-1학기_2026-05-31.xlsx");
     assertThat(file.contentType())
         .isEqualTo("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     assertThat(file.bytes()).startsWith(new byte[] {'P', 'K'});
   }
 
   @Test
-  void exportCsvUsesCsvContentTypeAndExtension() {
-    exportMapper.course =
-        new ProfessorStudentExportCourse("데이터베이스개론", "CSE301", "01분반", "2026-1학기");
-    exportMapper.rows.add(
-        new ProfessorStudentExportRow(
-            "2024111111", "홍길동", 3, "컴퓨터공학과", "ENROLLED", "2026-02-09 09:12", null));
-
-    ProfessorStudentExportFile file =
-        exportService.exportStudents(professorUser(), "CSE301", "01", "csv", null, null, null);
-
-    assertThat(file.filename()).endsWith(".csv");
-    assertThat(file.contentType()).isEqualTo("text/csv;charset=UTF-8");
-    assertThat(new String(file.bytes())).contains("studentId,name,grade,major,status,enrolledAt,note");
-  }
-
-  @Test
-  void exportRejectsUnsupportedFormat() {
-
+  void exportRejectsCsvAfterCsvSupportIsRemoved() {
     assertThatThrownBy(
-            () -> exportService.exportStudents(professorUser(), "CSE301", "01", "pdf", null, null, null))
+            () -> exportService.exportStudents(professorUser(), "CSE301", "01", "csv", null, null, null))
         .isInstanceOfSatisfying(
             ProfessorHandler.class,
             exception ->
                 assertThat(exception.getErrorReasonHttpStatus().getCode()).isEqualTo("PROFESSOR4003"));
   }
 
+  @Test
+  void exportRejectsMissingCourseFromProcedureResult() {
+    exportMapper.courseResult = "COURSE_NOT_FOUND";
+
+    assertThatThrownBy(
+            () -> exportService.exportStudents(professorUser(), "CSE404", "01", "xlsx", null, null, null))
+        .isInstanceOfSatisfying(
+            ProfessorHandler.class,
+            exception ->
+                assertThat(exception.getErrorReasonHttpStatus().getCode()).isEqualTo("PROFESSOR4041"));
+  }
+
   private static class FakeProfessorStudentExportMapper implements ProfessorStudentExportMapper {
-    private Long requestedProfessorUserId;
-    private String requestedCourseId;
-    private String requestedDivision;
-    private String requestedKeyword;
-    private Integer requestedGrade;
-    private String requestedMajor;
-    private ProfessorStudentExportCourse course;
-    private final List<ProfessorStudentExportRow> rows = new ArrayList<>();
+    private String courseResult = "SUCCESS";
+    private Map<String, Object> courseParams;
+    private Map<String, Object> studentParams;
+    private final List<ProfessorStudentExportCourse> courseRows = new ArrayList<>();
+    private final List<ProfessorStudentExportRow> studentRows = new ArrayList<>();
 
     @Override
-    public ProfessorStudentExportCourse findCourse(Long professorUserId, String courseId, String division) {
-      requestedProfessorUserId = professorUserId;
-      requestedCourseId = courseId;
-      requestedDivision = division;
-      return course;
+    public void callGetExportCourse(Map<String, Object> params) {
+      courseParams = params;
+      params.put("result", courseResult);
+      params.put("course", courseRows);
     }
 
     @Override
-    public List<ProfessorStudentExportRow> findStudents(
-        Long professorUserId,
-        String courseId,
-        String division,
-        String keyword,
-        Integer grade,
-        String major) {
-      requestedProfessorUserId = professorUserId;
-      requestedCourseId = courseId;
-      requestedDivision = division;
-      requestedKeyword = keyword;
-      requestedGrade = grade;
-      requestedMajor = major;
-      return rows;
+    public void callGetExportStudents(Map<String, Object> params) {
+      studentParams = params;
+      params.put("rows", studentRows);
     }
   }
 }
-

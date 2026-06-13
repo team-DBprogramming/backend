@@ -1,8 +1,7 @@
 package com.example.backend.professor;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static com.example.backend.support.TestAuthentications.professorUser;
-import static com.example.backend.support.TestAuthentications.studentUser;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
@@ -11,17 +10,14 @@ import com.example.backend.dto.professor.ProfessorStudentListResponse;
 import com.example.backend.dto.professor.ProfessorStudentSummary;
 import com.example.backend.mapper.ProfessorStudentMapper;
 import com.example.backend.service.ProfessorStudentService;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ProfessorStudentServiceTest {
 
-  private final Clock clock = Clock.fixed(Instant.parse("2026-05-31T00:00:00Z"), ZoneOffset.UTC);
   private FakeProfessorStudentMapper studentMapper;
   private ProfessorStudentService studentService;
 
@@ -32,84 +28,75 @@ class ProfessorStudentServiceTest {
   }
 
   @Test
-  void getStudentsReturnsSelectedDivisionSummaryAndPagedStudents() {
+  void getStudentsUsesCallableProcedureResultCursors() {
+    studentMapper.result = "SUCCESS";
     studentMapper.summary =
-        new ProfessorStudentSummary("데이터베이스개론", "CSE301", "01분반", "2026-1학기", 6, 3);
+        new ProfessorStudentSummary("Database", "CSE301", "01분반", "2026-1학기", 6, 3);
     studentMapper.students.add(
-        new ProfessorStudentItem("2024000001", "정도훈", 3, "컴퓨터공학과", true));
+        new ProfessorStudentItem("2024000001", "Student One", 3, "Computer Science", true));
     studentMapper.students.add(
-        new ProfessorStudentItem("2024000002", "김민수", 3, "컴퓨터공학과", false));
+        new ProfessorStudentItem("2024000002", "Student Two", 3, "Computer Science", false));
 
     ProfessorStudentListResponse response =
         studentService.getStudents(
-            professorUser(), "CSE301", "01", "2024", 3, "컴퓨터", 1, 20);
+            professorUser(), "CSE301", "01", " 2024 ", 3, " Computer ", 1, 20);
 
     assertThat(response.summary().courseId()).isEqualTo("CSE301");
     assertThat(response.summary().division()).isEqualTo("01분반");
     assertThat(response.students()).hasSize(2);
     assertThat(response.students().get(0).isRetake()).isTrue();
-    assertThat(studentMapper.requestedProfessorUserId).isEqualTo(10L);
-    assertThat(studentMapper.requestedCourseId).isEqualTo("CSE301");
-    assertThat(studentMapper.requestedDivision).isEqualTo("01");
-    assertThat(studentMapper.requestedKeyword).isEqualTo("2024");
-    assertThat(studentMapper.requestedGrade).isEqualTo(3);
-    assertThat(studentMapper.requestedMajor).isEqualTo("컴퓨터");
-    assertThat(studentMapper.requestedSize).isEqualTo(20);
-    assertThat(studentMapper.requestedOffset).isZero();
+    assertThat(studentMapper.params).containsEntry("professorUserId", 10L);
+    assertThat(studentMapper.params).containsEntry("courseId", "CSE301");
+    assertThat(studentMapper.params).containsEntry("division", "01");
+    assertThat(studentMapper.params).containsEntry("keyword", " 2024 ");
+    assertThat(studentMapper.params).containsEntry("grade", 3);
+    assertThat(studentMapper.params).containsEntry("major", " Computer ");
+    assertThat(studentMapper.params).containsEntry("page", 1);
+    assertThat(studentMapper.params).containsEntry("size", 20);
   }
 
   @Test
-  void getStudentsRejectsMissingDivision() {
+  void getStudentsMapsProcedureDivisionError() {
+    studentMapper.result = "DIVISION_REQUIRED";
 
     assertThatThrownBy(
             () -> studentService.getStudents(professorUser(), "CSE301", "", null, null, null, 1, 20))
         .isInstanceOfSatisfying(
             ProfessorHandler.class,
             exception ->
-                assertThat(exception.getErrorReasonHttpStatus().getCode()).isEqualTo("PROFESSOR4005"));
+                assertThat(exception.getErrorReasonHttpStatus().getCode())
+                    .isEqualTo("PROFESSOR4005"));
+  }
+
+  @Test
+  void getStudentsMapsProcedureNotFoundError() {
+    studentMapper.result = "NOT_FOUND";
+
+    assertThatThrownBy(
+            () ->
+                studentService.getStudents(
+                    professorUser(), "UNKNOWN", "01", null, null, null, 1, 20))
+        .isInstanceOfSatisfying(
+            ProfessorHandler.class,
+            exception ->
+                assertThat(exception.getErrorReasonHttpStatus().getCode())
+                    .isEqualTo("PROFESSOR4041"));
   }
 
   private static class FakeProfessorStudentMapper implements ProfessorStudentMapper {
+    private String result;
     private ProfessorStudentSummary summary;
     private final List<ProfessorStudentItem> students = new ArrayList<>();
-    private Long requestedProfessorUserId;
-    private String requestedCourseId;
-    private String requestedDivision;
-    private String requestedKeyword;
-    private Integer requestedGrade;
-    private String requestedMajor;
-    private int requestedSize;
-    private int requestedOffset;
+    private Map<String, Object> params;
 
     @Override
-    public ProfessorStudentSummary findStudentSummary(
-        Long professorUserId, String courseId, String division) {
-      requestedProfessorUserId = professorUserId;
-      requestedCourseId = courseId;
-      requestedDivision = division;
-      return summary;
-    }
-
-    @Override
-    public List<ProfessorStudentItem> findStudents(
-        Long professorUserId,
-        String courseId,
-        String division,
-        String keyword,
-        Integer grade,
-        String major,
-        int size,
-        int offset) {
-      requestedProfessorUserId = professorUserId;
-      requestedCourseId = courseId;
-      requestedDivision = division;
-      requestedKeyword = keyword;
-      requestedGrade = grade;
-      requestedMajor = major;
-      requestedSize = size;
-      requestedOffset = offset;
-      return students;
+    public void callGetProfessorStudentList(Map<String, Object> params) {
+      this.params = params;
+      params.put("result", result);
+      if (summary != null) {
+        params.put("summary", List.of(summary));
+      }
+      params.put("students", students);
     }
   }
 }
-
