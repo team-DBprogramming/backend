@@ -603,8 +603,8 @@ insert into class (
            1,
            '명신관101',
            2026,
-           1,
-           35,
+           2,
+           3,
            0,
            'OPEN' );
 
@@ -1251,10 +1251,9 @@ insert into enroll (
            2,
            to_timestamp('2026-06-04 10:00:00',
                         'YYYY-MM-DD HH24:MI:SS'),
-           'DROPPED',
-           to_timestamp('2026-06-05 17:00:00',
-                        'YYYY-MM-DD HH24:MI:SS'),
-           '정정 기간 취소' );
+           'ENROLLED',
+           null,
+           '정원 초과 테스트용 신청' );
 
 insert into cart_item (
    cart_id,

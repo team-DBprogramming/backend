@@ -31,7 +31,7 @@ SELECT
    cls.c_id AS course_id,
    l.subject AS course_name,
    cls.c_no AS division_no,
-   LPAD(TO_CHAR(cls.c_no), 2, '0') || '遺꾨컲' AS division,
+   LPAD(TO_CHAR(cls.c_no), 2, '0') || '분반' AS division,
    cls.c_year,
    cls.c_semester,
    cls.c_status,
@@ -118,7 +118,7 @@ SELECT
    n.target_c_id AS target_course_id,
    CASE
       WHEN n.target_c_no IS NULL THEN NULL
-      ELSE TO_CHAR(n.target_c_no) || '遺꾨컲'
+      ELSE TO_CHAR(n.target_c_no) || '분반'
    END AS target_division,
    TO_CHAR(n.target_request_id) AS target_request_id,
    n.created_at AS sort_created_at,
@@ -141,12 +141,12 @@ SELECT
    l.subject AS course_name,
    CASE
       WHEN c.c_no IS NULL THEN NULL
-      ELSE TO_CHAR(c.c_no) || '遺꾨컲'
+      ELSE TO_CHAR(c.c_no) || '분반'
    END AS division,
    n.target_c_id AS target_course_id,
    CASE
       WHEN n.target_c_no IS NULL THEN NULL
-      ELSE TO_CHAR(n.target_c_no) || '遺꾨컲'
+      ELSE TO_CHAR(n.target_c_no) || '분반'
    END AS target_division,
    TO_CHAR(n.target_request_id) AS target_request_id,
    DBMS_LOB.SUBSTR(cr.reason, 4000, 1) AS request_reason

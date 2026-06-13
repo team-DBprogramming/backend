@@ -56,7 +56,7 @@ class SchemaSqlTest {
     assertThat(schema).contains("revoked_at timestamp");
     assertThat(schema).contains("create or replace view v_notification_list");
     assertThat(schema).contains("dbms_lob.substr(n.body, 4000, 1) as body");
-    assertThat(schema).contains("|| '遺꾨컲'");
+    assertThat(schema).contains("|| '분반'");
     assertThat(schema).contains("n.created_at as sort_created_at");
   }
 
@@ -66,7 +66,7 @@ class SchemaSqlTest {
     String mapper = Files.readString(NOTIFICATION_MAPPER_PATH).toLowerCase().replaceAll("\\s+", " ");
 
     assertThat(schema).contains("create or replace view v_notification_list");
-    assertThat(schema).contains("|| '遺꾨컲'");
+    assertThat(schema).contains("|| '분반'");
     assertThat(mapper).contains("from v_notification_list");
   }
 
