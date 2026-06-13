@@ -212,7 +212,11 @@ class SchemaSqlTest {
     assertThat(schema).contains("sender_p_id");
     assertThat(schema).contains("target_c_id");
     assertThat(schema).contains("target_c_no");
-    assertThat(schema).contains("cursor");
+    assertThat(schema).contains("cursor recipient_cursor(");
+    assertThat(schema).contains("p_target_c_id in class.c_id%type");
+    assertThat(schema).contains("p_target_c_no in class.c_no%type");
+    assertThat(schema).contains("p_student_ids_csv in varchar2");
+    assertThat(schema).contains("for recipient in recipient_cursor(p_c_id, v_c_no, p_student_ids) loop");
     assertThat(schema).contains("exception");
 
     assertThat(mapper).doesNotContain("course_section");

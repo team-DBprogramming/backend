@@ -603,7 +603,7 @@ BEGIN
          DBMS_LOB.SUBSTR(r.pros, 4000, 1) AS pros,
          DBMS_LOB.SUBSTR(r.cons, 4000, 1) AS cons,
          DBMS_LOB.SUBSTR(r.advice, 4000, 1) AS tip,
-         '?듬챸' AS writer
+         '익명' AS writer
       FROM V_PROFESSOR_REVIEW_CLASS dc
       JOIN enroll e
         ON e.c_id = dc.course_id
@@ -719,8 +719,8 @@ BEGIN
          LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
          OR TO_CHAR(dc.division_no) = TRIM(p_division)
          OR dc.division = TRIM(p_division)
-         OR TO_CHAR(dc.division_no) || '遺꾨컲' = TRIM(p_division)
-         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
+         OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
       );
 
    IF v_target_count = 0 THEN
@@ -734,7 +734,7 @@ BEGIN
          dc.course_name,
          dc.course_id,
          dc.division,
-         TO_CHAR(dc.c_year) || '-' || TO_CHAR(dc.c_semester) || '?숆린' AS semester,
+         TO_CHAR(dc.c_year) || '-' || TO_CHAR(dc.c_semester) || '학기' AS semester,
          dc.student_count AS total_students,
          (
             SELECT COUNT(*)
@@ -751,8 +751,8 @@ BEGIN
            LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
            OR TO_CHAR(dc.division_no) = TRIM(p_division)
            OR dc.division = TRIM(p_division)
-           OR TO_CHAR(dc.division_no) || '遺꾨컲' = TRIM(p_division)
-           OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
+           OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+           OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
         );
 
    OPEN p_students FOR
@@ -799,8 +799,8 @@ BEGIN
               LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
               OR TO_CHAR(dc.division_no) = TRIM(p_division)
               OR dc.division = TRIM(p_division)
-              OR TO_CHAR(dc.division_no) || '遺꾨컲' = TRIM(p_division)
-              OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
+              OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+              OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
            )
            AND (
               p_keyword IS NULL
@@ -876,10 +876,8 @@ BEGIN
          LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
          OR TO_CHAR(dc.division_no) = TRIM(p_division)
          OR dc.division = TRIM(p_division)
-         OR TO_CHAR(dc.division_no) || '遺꾨컲' = TRIM(p_division)
-         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
-         OR TO_CHAR(dc.division_no) || '?브쑬而? = TRIM(p_division)
-         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '?브쑬而? = TRIM(p_division)
+         OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
       );
 
    IF v_target_count = 0 THEN
@@ -893,7 +891,7 @@ BEGIN
          dc.course_name,
          dc.course_id,
          dc.division,
-         TO_CHAR(dc.c_year) || '-' || TO_CHAR(dc.c_semester) || '?숆린' AS semester
+         TO_CHAR(dc.c_year) || '-' || TO_CHAR(dc.c_semester) || '학기' AS semester
       FROM V_PROFESSOR_DASHBOARD_CLASS dc
       WHERE dc.professor_user_id = p_professor_user_id
         AND dc.course_id = p_course_id
@@ -966,10 +964,8 @@ BEGIN
          LPAD(TO_CHAR(dc.division_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
          OR TO_CHAR(dc.division_no) = TRIM(p_division)
          OR dc.division = TRIM(p_division)
-         OR TO_CHAR(dc.division_no) || '遺꾨컲' = TRIM(p_division)
-         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
-         OR TO_CHAR(dc.division_no) || '?브쑬而? = TRIM(p_division)
-         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '?브쑬而? = TRIM(p_division)
+         OR TO_CHAR(dc.division_no) || '분반' = TRIM(p_division)
+         OR LPAD(TO_CHAR(dc.division_no), 2, '0') || '분반' = TRIM(p_division)
       );
 
    IF v_target_count = 0 THEN
@@ -1041,16 +1037,16 @@ BEGIN
 
     DBMS_OUTPUT.PUT_LINE('#');
     DBMS_OUTPUT.PUT_LINE(
-        sStudentId || '?섏씠 怨쇰ぉ踰덊샇 '
-        || sCourseId || ', 遺꾨컲 '
-        || nCourseIdNo || ' ?섍컯?좎껌 ?붿껌'
+        sStudentId || '님이 과목번호 '
+        || sCourseId || ', 분반 '
+        || nCourseIdNo || ' 수강신청 요청'
     );
 
     nYear := Date2EnrollYear(SYSDATE);
     nSemester := Date2EnrollSemester(SYSDATE);
 
     --------------------------------------------------
-    -- 1. ?좎껌?섎젮??遺꾨컲 議댁옱 + OPEN ?щ? + ?좎껌 怨쇰ぉ ?숈젏
+    -- 1. 신청하려는 분반 존재 + OPEN 여부 + 신청 과목 학점
     --------------------------------------------------
     SELECT l.credit, c.c_max
     INTO nCourseUnit, nTeachMax
@@ -1062,7 +1058,7 @@ BEGIN
       AND c.c_status = 'OPEN';
 
     --------------------------------------------------
-    -- 2. ?꾩옱 ?좎껌 ?숈젏
+    -- 2. 현재 신청 학점
     --------------------------------------------------
     SELECT NVL(SUM(l.credit), 0)
     INTO nSumCourseUnit
@@ -1079,7 +1075,7 @@ BEGIN
     END IF;
 
     --------------------------------------------------
-    -- 3. ?대? ?좎껌??怨쇰ぉ?몄? ?뺤씤
+    -- 3. 이미 신청한 과목인지 확인
     --------------------------------------------------
     SELECT COUNT(*)
     INTO nCnt
@@ -1095,8 +1091,8 @@ BEGIN
     END IF;
 
     --------------------------------------------------
-    -- 4. ?뺤썝 珥덇낵 ?뺤씤
-    -- ?몃━嫄곌? class.c_now瑜?愿由ы븯誘濡?class.c_now 湲곗??쇰줈 ?뺤씤
+    -- 4. 정원 초과 확인
+    -- 트리거가 class.c_now를 관리하므로 class.c_now 기준으로 확인
     --------------------------------------------------
     SELECT COUNT(*)
     INTO nCnt
@@ -1110,7 +1106,7 @@ BEGIN
     END IF;
 
     --------------------------------------------------
-    -- 5. ?쒓컙 異⑸룎 ?뺤씤
+    -- 5. 시간 충돌 확인
     --------------------------------------------------
     SELECT COUNT(*)
     INTO nCnt
@@ -1134,7 +1130,7 @@ BEGIN
     END IF;
 
     --------------------------------------------------
-    -- 6. ?섍컯?좎껌
+    -- 6. 수강신청
     --------------------------------------------------
     INSERT INTO enroll (
         s_id,
@@ -1196,16 +1192,16 @@ BEGIN
 
     DBMS_OUTPUT.PUT_LINE('#');
     DBMS_OUTPUT.PUT_LINE(
-        sStudentId || '?섏씠 怨쇰ぉ踰덊샇 '
-        || sCourseId || ', 遺꾨컲 '
-        || NVL(TO_CHAR(nCourseIdNo), '?꾩껜') || '???섍컯 ?댁젣瑜??붿껌?섏??듬땲??'
+        sStudentId || '님이 과목번호 '
+        || sCourseId || ', 분반 '
+        || NVL(TO_CHAR(nCourseIdNo), '전체') || '의 수강 해제를 요청하였습니다.'
     );
 
     nYear := Date2EnrollYear(SYSDATE);
     nSemester := Date2EnrollSemester(SYSDATE);
 
     --------------------------------------------------
-    -- ?섍컯 以묒씤吏 ?뺤씤
+    -- 수강 중인지 확인
     --------------------------------------------------
     SELECT COUNT(*)
     INTO nCnt
@@ -1223,7 +1219,7 @@ BEGIN
     END IF;
 
     --------------------------------------------------
-    -- ?섍컯 痍⑥냼
+    -- 수강 취소
     --------------------------------------------------
     UPDATE enroll
     SET e_status = 'DROPPED',
@@ -1465,7 +1461,7 @@ BEGIN
             l.course_type AS course_type,
             l.credit AS credit,
             l.prof AS professor,
-            TO_CHAR(c.c_no) || '遺꾨컲' AS division,
+            TO_CHAR(c.c_no) || '분반' AS division,
             ct.c_day AS day_of_week,
             ct.c_start AS start_time,
             ct.c_end AS end_time,
@@ -1500,14 +1496,14 @@ END;
 
 
 ------------------------------------------------------------
--- ?댄븯 異붽? 援ы쁽
+-- 이하 추가 구현
 -- GET_COURSE_LIST / GET_COURSE_DETAIL / GET_CART_LIST /
--- GET_REVIEW_LIST / GET_DASHBOARD ??Spring Boot + MyBatis?먯꽌 援ы쁽
+-- GET_REVIEW_LIST / GET_DASHBOARD 등은 Spring Boot + MyBatis에서 구현
 ------------------------------------------------------------
 
 ------------------------------------------------------------
--- ?쇨큵 ?섍컯?좎껌 寃곌낵 ?꾩떆 ????뚯씠釉?
--- 理쒖큹 1?뚮쭔 ?앹꽦?섎ŉ, 媛숈? ?몄뀡?먯꽌 ?꾨줈?쒖? ?몄텧留덈떎 鍮꾩썙???ъ슜
+-- 일괄 수강신청 결과 임시 저장 테이블
+-- 최초 1회만 생성하며, 같은 세션에서 프로시저 호출마다 비워서 사용
 ------------------------------------------------------------
 BEGIN
     EXECUTE IMMEDIATE '
@@ -1528,7 +1524,7 @@ END;
 /
 
 ------------------------------------------------------------
--- ?λ컮援щ땲 ?닿린
+-- 장바구니 담기
 ------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE INSERT_CART(
     p_s_id   IN cart_item.s_id%TYPE,
@@ -1567,7 +1563,7 @@ END;
 /
 
 ------------------------------------------------------------
--- ?λ컮援щ땲 ID 湲곗? ?④굔 ??젣
+-- 장바구니 ID 기준 항목 삭제
 ------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE DELETE_CART(
     p_cart_id IN cart_item.cart_id%TYPE,
@@ -1593,8 +1589,8 @@ END;
 /
 
 ------------------------------------------------------------
--- 援먯닔 ?섍컯 ?붿껌 ?뱀씤/嫄곗젅 泥섎━
--- ?곹깭 ?뺢퇋?? ?덉쇅 遺꾧린, ?붿껌 媛깆떊, 寃곌낵 ?뚮┝ ?앹꽦??PL/SQL?먯꽌 泥섎━
+-- 교수 수강 요청 승인/거절 처리
+-- 상태 정규화, 예외 분기, 요청 갱신, 결과 알림 생성을 PL/SQL에서 처리
 ------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE PROCESS_COURSE_REQUEST(
     p_professor_user_id IN user_account.user_id%TYPE,
@@ -1673,8 +1669,8 @@ BEGIN
       AND cls.c_semester = Date2EnrollSemester(SYSDATE)
       AND (
           LPAD(TO_CHAR(cls.c_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
-          OR TO_CHAR(cls.c_no) || '遺꾨컲' = TRIM(p_division)
-          OR LPAD(TO_CHAR(cls.c_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
+          OR TO_CHAR(cls.c_no) || '분반' = TRIM(p_division)
+          OR LPAD(TO_CHAR(cls.c_no), 2, '0') || '분반' = TRIM(p_division)
       )
     FOR UPDATE OF cr.status;
 
@@ -1715,13 +1711,13 @@ BEGIN
         p_c_id,
         v_c_no,
         v_request_pk,
-        v_course_name || ' ?섍컯 ?붿껌 寃곌낵',
-        v_course_name || ' ?섍컯 ?붿껌??'
+        v_course_name || ' 수강 요청 결과',
+        v_course_name || ' 수강 요청이 '
             || CASE v_new_status
-                WHEN 'APPROVED' THEN '?뱀씤'
-                ELSE '嫄곗젅'
+                WHEN 'APPROVED' THEN '승인'
+                ELSE '거절'
                END
-            || '?섏뿀?듬땲??',
+            || '되었습니다.',
         'COURSE_REQUEST_RESULT',
         0,
         v_updated_at
@@ -1742,11 +1738,11 @@ END;
 /
 
 ------------------------------------------------------------
--- ?숈깮 + 怨쇰ぉ + 遺꾨컲 湲곗? ?λ컮援щ땲 ??젣
+-- 학생 + 과목 + 분반 기준 장바구니 삭제
 ------------------------------------------------------------
 ------------------------------------------------------------
--- 援먯닔 硫붿떆吏 ?꾩넚
--- ?섏떊??寃利? 以묐났 ?쒓굅, 諛섎났 ?뚮┝ ?앹꽦??PL/SQL?먯꽌 泥섎━
+-- 교수 메시지 전송
+-- 수신자 검증, 중복 제거, 반복 알림 생성을 PL/SQL에서 처리
 ------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE SEND_PROFESSOR_MESSAGE(
     p_professor_user_id IN user_account.user_id%TYPE,
@@ -1764,11 +1760,15 @@ IS
     v_valid_count     NUMBER := 0;
     v_created_at      TIMESTAMP := CAST(SYSTIMESTAMP AS TIMESTAMP);
 
-    CURSOR recipient_cursor IS
+    CURSOR recipient_cursor(
+        p_target_c_id       IN class.c_id%TYPE,
+        p_target_c_no       IN class.c_no%TYPE,
+        p_student_ids_csv   IN VARCHAR2
+    ) IS
         WITH requested_students AS (
-            SELECT DISTINCT TRIM(REGEXP_SUBSTR(p_student_ids, '[^,]+', 1, LEVEL)) AS s_id
+            SELECT DISTINCT TRIM(REGEXP_SUBSTR(p_student_ids_csv, '[^,]+', 1, LEVEL)) AS s_id
             FROM dual
-            CONNECT BY REGEXP_SUBSTR(p_student_ids, '[^,]+', 1, LEVEL) IS NOT NULL
+            CONNECT BY REGEXP_SUBSTR(p_student_ids_csv, '[^,]+', 1, LEVEL) IS NOT NULL
         )
         SELECT s.s_id
         FROM requested_students rs
@@ -1776,8 +1776,8 @@ IS
           ON s.s_id = rs.s_id
         JOIN enroll e
           ON e.s_id = s.s_id
-         AND e.c_id = p_c_id
-         AND e.c_no = v_c_no
+         AND e.c_id = p_target_c_id
+         AND e.c_no = p_target_c_no
          AND e.e_status = 'ENROLLED'
          AND e.e_year = Date2EnrollYear(SYSDATE)
          AND e.e_semester = Date2EnrollSemester(SYSDATE)
@@ -1811,10 +1811,8 @@ BEGIN
       AND cls.c_semester = Date2EnrollSemester(SYSDATE)
       AND (
           LPAD(TO_CHAR(cls.c_no), 2, '0') = LPAD(REGEXP_SUBSTR(TRIM(p_division), '^[0-9]+'), 2, '0')
-          OR TO_CHAR(cls.c_no) || '遺꾨컲' = TRIM(p_division)
-          OR LPAD(TO_CHAR(cls.c_no), 2, '0') || '遺꾨컲' = TRIM(p_division)
-          OR TO_CHAR(cls.c_no) || '?브쑬而? = TRIM(p_division)
-          OR LPAD(TO_CHAR(cls.c_no), 2, '0') || '?브쑬而? = TRIM(p_division)
+          OR TO_CHAR(cls.c_no) || '분반' = TRIM(p_division)
+          OR LPAD(TO_CHAR(cls.c_no), 2, '0') || '분반' = TRIM(p_division)
       );
 
     WITH requested_students AS (
@@ -1854,7 +1852,7 @@ BEGIN
         RETURN;
     END IF;
 
-    FOR recipient IN recipient_cursor LOOP
+    FOR recipient IN recipient_cursor(p_c_id, v_c_no, p_student_ids) LOOP
         INSERT INTO notification (
             recipient_s_id,
             sender_p_id,
@@ -1871,7 +1869,7 @@ BEGIN
             v_professor_id,
             p_c_id,
             v_c_no,
-            '援먯닔?섏쑝濡쒕???硫붿떆吏媛 ?꾩갑?덉뒿?덈떎.',
+            '교수님으로부터 메시지가 전달되었습니다.',
             p_message,
             'PROFESSOR_MESSAGE',
             0,
@@ -1920,7 +1918,7 @@ END;
 /
 
 ------------------------------------------------------------
--- ?λ컮援щ땲 媛쒖닔
+-- 장바구니 개수
 ------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE COUNT_CART(
     p_s_id  IN cart_item.s_id%TYPE,
@@ -1936,9 +1934,9 @@ END;
 /
 
 ------------------------------------------------------------
--- ?λ컮援щ땲 ?좏깮 ??ぉ ?쇨큵 ?섍컯?좎껌
--- p_cart_ids_csv ?? '1,3,5'
--- ?깃났 ??ぉ? ?λ컮援щ땲?먯꽌 ??젣, ?ㅽ뙣 ??ぉ? ?좎?
+-- 장바구니 선택 항목 일괄 수강신청
+-- p_cart_ids_csv 예: '1,3,5'
+-- 성공 항목은 장바구니에서 삭제, 실패 항목은 유지
 ------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE ENROLL_FROM_CART(
     p_s_id         IN cart_item.s_id%TYPE,
@@ -1987,7 +1985,7 @@ BEGIN
 
         IF v_enroll_result = 'ENROLL_SUCCESS' THEN
             v_success := 1;
-            v_message := '?섍컯?좎껌???깃났?덉뒿?덈떎.';
+            v_message := '수강신청에 성공했습니다.';
 
             DELETE FROM cart_item
             WHERE cart_id = cart_rec.cart_id
@@ -1997,20 +1995,20 @@ BEGIN
             v_message :=
                 CASE v_enroll_result
                     WHEN 'MAX_CREDIT_EXCEEDED'
-                        THEN '理쒕? ?좎껌 ?숈젏??珥덇낵?⑸땲??'
+                        THEN '최대 신청 학점을 초과합니다.'
                     WHEN 'DUPLICATE_COURSE'
-                        THEN '?대? ?좎껌??怨쇰ぉ?낅땲??'
+                        THEN '이미 신청한 과목입니다.'
                     WHEN 'CAPACITY_FULL'
-                        THEN '媛뺤쓽 ?뺤썝??媛??李쇱뒿?덈떎.'
+                        THEN '강의 정원이 가득 찼습니다.'
                     WHEN 'TIME_CONFLICT'
-                        THEN '湲곗〈 ?섏뾽怨??쒓컙??寃뱀묩?덈떎.'
+                        THEN '기존 수업과 시간이 겹칩니다.'
                     WHEN 'COURSE_NOT_FOUND'
-                        THEN '媛뺤쓽 ?먮뒗 遺꾨컲??李얠쓣 ???놁뒿?덈떎.'
+                        THEN '강의 또는 분반을 찾을 수 없습니다.'
                     WHEN 'CLASS_NOT_FOUND'
-                        THEN '媛뺤쓽 ?먮뒗 遺꾨컲??李얠쓣 ???놁뒿?덈떎.'
+                        THEN '강의 또는 분반을 찾을 수 없습니다.'
                     WHEN 'REGISTRATION_CLOSED'
-                        THEN '?꾩옱 ?섍컯?좎껌 湲곌컙???꾨떃?덈떎.'
-                    ELSE '?섍컯?좎껌 泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.'
+                        THEN '현재 수강신청 기간이 아닙니다.'
+                    ELSE '수강신청 처리 중 오류가 발생했습니다.'
                 END;
         END IF;
 
@@ -2028,7 +2026,7 @@ BEGIN
         );
     END LOOP;
 
-    -- ?붿껌 ID媛 議댁옱?섏? ?딄굅???ㅻⅨ ?숈깮 ?뚯쑀??寃쎌슦
+    -- 요청 ID가 존재하지 않거나 다른 학생 소유인 경우
     FOR requested_id IN (
         SELECT TO_NUMBER(TRIM(REGEXP_SUBSTR(
                    p_cart_ids_csv,
@@ -2054,7 +2052,7 @@ BEGIN
         SELECT
             requested_id.cart_id,
             0,
-            '?λ컮援щ땲 ??ぉ??李얠쓣 ???놁뒿?덈떎.',
+            '장바구니 항목을 찾을 수 없습니다.',
             'CART_ITEM_NOT_FOUND'
         FROM dual
         WHERE NOT EXISTS (
@@ -2093,7 +2091,7 @@ EXCEPTION
         VALUES (
             -1,
             0,
-            '?쇨큵 ?섍컯?좎껌 泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.',
+            '일괄 수강신청 처리 중 오류가 발생했습니다.',
             'SQLCODE=' || SQLCODE
         );
 
@@ -2115,7 +2113,7 @@ END;
 /
 
 ------------------------------------------------------------
--- 媛뺤쓽???깅줉
+-- 강의평 등록
 -- StudentReviewRequest:
 -- rating, difficulty, comment
 -- difficulty: 1~2 EASY / 3 MEDIUM / 4~5 HARD
@@ -2214,10 +2212,10 @@ END;
 /
 
 ------------------------------------------------------------
--- ?섍컯 ?붿껌 ?깅줉/?ъ슂泥?
+-- 수강 요청 등록/재요청
 -- StudentBorrowRequest:
 -- division, reason
--- division 臾몄옄???뚯떛? Service?먯꽌 ?섍퀬 p_c_no NUMBER濡??꾨떖
+-- division 문자열 파싱은 Service에서 하고 p_c_no NUMBER로 전달
 ------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE INSERT_BORROW_REQUEST(
     p_s_id        IN student.s_id%TYPE,
@@ -2306,6 +2304,6 @@ END;
 /
 
 ------------------------------------------------------------
--- 由щ럭 ?낅젰 ??寃利??몃━嫄?
--- 以묐났? UK_REVIEW_ENROLL??理쒖쥌 李⑤떒
+-- 강의평 입력 전 검증 트리거
+-- 중복은 UK_REVIEW_ENROLL이 최종 차단
 ------------------------------------------------------------
