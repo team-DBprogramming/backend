@@ -593,6 +593,8 @@ insert into class (
    c_id,
    c_no,
    c_where,
+   c_year,
+   c_semester,
    c_max,
    c_now,
    c_status
@@ -600,6 +602,8 @@ insert into class (
            'CSE3033',
            1,
            '명신관101',
+           2026,
+           1,
            35,
            0,
            'OPEN' );
@@ -609,6 +613,8 @@ insert into class (
    c_id,
    c_no,
    c_where,
+   c_year,
+   c_semester,
    c_max,
    c_now,
    c_status
@@ -616,6 +622,8 @@ insert into class (
            'CSE4050',
            1,
            '명신관203',
+           2026,
+           1,
            30,
            0,
            'OPEN' );
@@ -625,6 +633,8 @@ insert into class (
    c_id,
    c_no,
    c_where,
+   c_year,
+   c_semester,
    c_max,
    c_now,
    c_status
@@ -632,6 +642,8 @@ insert into class (
            'CSE4077',
            1,
            '명신관305',
+           2026,
+           1,
            40,
            0,
            'OPEN' );
@@ -641,6 +653,8 @@ insert into class (
    c_id,
    c_no,
    c_where,
+   c_year,
+   c_semester,
    c_max,
    c_now,
    c_status
@@ -648,6 +662,8 @@ insert into class (
            'CSE2010',
            2,
            '명신관101',
+           2026,
+           1,
            40,
            0,
            'OPEN' );
@@ -657,6 +673,8 @@ insert into class (
    c_id,
    c_no,
    c_where,
+   c_year,
+   c_semester,
    c_max,
    c_now,
    c_status
@@ -664,6 +682,8 @@ insert into class (
            'BUS2100',
            1,
            '경영관201',
+           2026,
+           1,
            45,
            0,
            'OPEN' );
@@ -673,6 +693,8 @@ insert into class (
    c_id,
    c_no,
    c_where,
+   c_year,
+   c_semester,
    c_max,
    c_now,
    c_status
@@ -680,6 +702,8 @@ insert into class (
            'MAT2200',
            1,
            '과학관110',
+           2026,
+           1,
            50,
            0,
            'OPEN' );
@@ -689,6 +713,8 @@ insert into class (
    c_id,
    c_no,
    c_where,
+   c_year,
+   c_semester,
    c_max,
    c_now,
    c_status
@@ -696,6 +722,8 @@ insert into class (
            'ENG1500',
            1,
            '명신관203',
+           2026,
+           1,
            25,
            0,
            'CLOSED' );
@@ -705,6 +733,8 @@ insert into class (
    c_id,
    c_no,
    c_where,
+   c_year,
+   c_semester,
    c_max,
    c_now,
    c_status
@@ -712,6 +742,8 @@ insert into class (
            'CSE1010',
            1,
            '명신관305',
+           2026,
+           1,
            45,
            0,
            'OPEN' );

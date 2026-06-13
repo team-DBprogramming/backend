@@ -29,6 +29,22 @@ begin
              'VIEW'
         from dual
       union all
+      select 'GET_PROFESSOR_DASHBOARD_SUMMARY',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'GET_PROFESSOR_TODAY_SCHEDULES',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'GET_PROFESSOR_ASSIGNED_COURSES',
+             'PROCEDURE'
+        from dual
+      union all
+      select 'V_PROFESSOR_DASHBOARD_CLASS',
+             'VIEW'
+        from dual
+      union all
       select 'INSERTENROLLCHECKED',
              'PROCEDURE'
         from dual
@@ -233,6 +249,8 @@ create table class (
    c_id     varchar2(10),
    c_no     number,
    c_where  varchar2(30),
+   c_year   number(4) not null,
+   c_semester number(1) not null,
    c_max    number default 30 not null,
    c_now    number default 0 not null,
    c_status varchar2(10) default 'OPEN' not null,
@@ -246,6 +264,7 @@ create table class (
       check ( c_max >= 0
          and c_now >= 0
          and c_now <= c_max ),
+   constraint chk_class_semester check ( c_semester in ( 1, 2 ) ),
    constraint chk_class_status
       check ( c_status in ( 'OPEN',
                             'CLOSED',
@@ -541,6 +560,29 @@ LEFT JOIN professor p
    ON p.p_id = ua.login_id
   AND ua.role = 'PROFESSOR';
 /
+CREATE OR REPLACE VIEW V_PROFESSOR_DASHBOARD_CLASS AS
+SELECT
+   ua.user_id AS professor_user_id,
+   p.p_id AS professor_id,
+   cls.c_id AS course_id,
+   l.subject AS course_name,
+   cls.c_no AS division_no,
+   LPAD(TO_CHAR(cls.c_no), 2, '0') || '분반' AS division,
+   cls.c_year,
+   cls.c_semester,
+   cls.c_status,
+   NVL(cls.c_now, 0) AS student_count,
+   NVL(cls.c_max, 0) AS max_students,
+   cls.c_where AS room
+FROM user_account ua
+JOIN professor p
+   ON p.p_id = ua.login_id
+JOIN class cls
+   ON cls.p_id = p.p_id
+JOIN lecture l
+   ON l.no = cls.c_id
+WHERE ua.role = 'PROFESSOR';
+/
 
 CREATE OR REPLACE VIEW V_NOTIFICATION_LIST AS
 SELECT
@@ -798,6 +840,214 @@ BEGIN
 END;
 /
 
+CREATE OR REPLACE PROCEDURE GET_PROFESSOR_DASHBOARD_SUMMARY(
+   p_professor_user_id IN user_account.user_id%TYPE,
+   p_semester          IN VARCHAR2,
+   p_course_count      OUT NUMBER,
+   p_total_students    OUT NUMBER,
+   p_total_capacity    OUT NUMBER,
+   p_avg_satisfaction  OUT NUMBER,
+   p_new_review_count  OUT NUMBER
+)
+IS
+   v_year         class.c_year%TYPE;
+   v_semester     class.c_semester%TYPE;
+   v_professor_id professor.p_id%TYPE;
+BEGIN
+   IF p_semester IS NULL OR TRIM(p_semester) IS NULL THEN
+      v_year := Date2EnrollYear(SYSDATE);
+      v_semester := Date2EnrollSemester(SYSDATE);
+   ELSE
+      v_year := TO_NUMBER(REGEXP_SUBSTR(TRIM(p_semester), '^[0-9]{4}'));
+      v_semester := TO_NUMBER(REGEXP_SUBSTR(TRIM(p_semester), '-([12])', 1, 1, NULL, 1));
+   END IF;
+
+   SELECT login_id
+     INTO v_professor_id
+     FROM user_account
+    WHERE user_id = p_professor_user_id
+      AND role = 'PROFESSOR';
+
+   SELECT
+      (
+         SELECT COUNT(*)
+           FROM V_PROFESSOR_DASHBOARD_CLASS dc
+          WHERE dc.professor_user_id = p_professor_user_id
+            AND dc.c_status != 'CANCELLED'
+            AND dc.c_year = v_year
+            AND dc.c_semester = v_semester
+      ),
+      (
+         SELECT NVL(SUM(dc.student_count), 0)
+           FROM V_PROFESSOR_DASHBOARD_CLASS dc
+          WHERE dc.professor_user_id = p_professor_user_id
+            AND dc.c_status != 'CANCELLED'
+            AND dc.c_year = v_year
+            AND dc.c_semester = v_semester
+      ),
+      (
+         SELECT NVL(SUM(dc.max_students), 0)
+           FROM V_PROFESSOR_DASHBOARD_CLASS dc
+          WHERE dc.professor_user_id = p_professor_user_id
+            AND dc.c_status != 'CANCELLED'
+            AND dc.c_year = v_year
+            AND dc.c_semester = v_semester
+      ),
+      (
+         SELECT ROUND(AVG(r.rating_overall), 1)
+           FROM V_PROFESSOR_DASHBOARD_CLASS dc
+           JOIN enroll e
+             ON e.c_id = dc.course_id
+            AND e.c_no = dc.division_no
+            AND e.e_status = 'ENROLLED'
+           JOIN review r
+             ON r.e_id = e.e_id
+          WHERE dc.professor_user_id = p_professor_user_id
+            AND dc.c_status != 'CANCELLED'
+            AND dc.c_year = v_year
+            AND dc.c_semester = v_semester
+      ),
+      (
+         SELECT COUNT(*)
+           FROM notification n
+           LEFT JOIN class cls
+             ON cls.c_id = n.target_c_id
+            AND cls.c_no = n.target_c_no
+          WHERE n.recipient_p_id = v_professor_id
+            AND n.type = 'COURSE_REVIEW'
+            AND n.is_read = 0
+            AND (
+               n.target_c_id IS NULL
+               OR (
+                  cls.c_year = v_year
+                  AND cls.c_semester = v_semester
+               )
+            )
+      )
+   INTO
+      p_course_count,
+      p_total_students,
+      p_total_capacity,
+      p_avg_satisfaction,
+      p_new_review_count
+   FROM dual;
+
+EXCEPTION
+   WHEN NO_DATA_FOUND THEN
+      p_course_count := 0;
+      p_total_students := 0;
+      p_total_capacity := 0;
+      p_avg_satisfaction := NULL;
+      p_new_review_count := 0;
+   WHEN VALUE_ERROR THEN
+      p_course_count := 0;
+      p_total_students := 0;
+      p_total_capacity := 0;
+      p_avg_satisfaction := NULL;
+      p_new_review_count := 0;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE GET_PROFESSOR_TODAY_SCHEDULES(
+   p_professor_user_id IN user_account.user_id%TYPE,
+   p_semester          IN VARCHAR2,
+   p_now               IN TIMESTAMP,
+   p_result            OUT SYS_REFCURSOR
+)
+IS
+   v_year      class.c_year%TYPE;
+   v_semester  class.c_semester%TYPE;
+   v_now       TIMESTAMP;
+   v_day       class_time.c_day%TYPE;
+   v_time      VARCHAR2(5);
+BEGIN
+   v_now := COALESCE(p_now, CAST(SYSTIMESTAMP AS TIMESTAMP));
+
+   IF p_semester IS NULL OR TRIM(p_semester) IS NULL THEN
+      v_year := Date2EnrollYear(CAST(v_now AS DATE));
+      v_semester := Date2EnrollSemester(CAST(v_now AS DATE));
+   ELSE
+      v_year := TO_NUMBER(REGEXP_SUBSTR(TRIM(p_semester), '^[0-9]{4}'));
+      v_semester := TO_NUMBER(REGEXP_SUBSTR(TRIM(p_semester), '-([12])', 1, 1, NULL, 1));
+   END IF;
+
+   v_day := UPPER(TRIM(TO_CHAR(CAST(v_now AS DATE), 'DY', 'NLS_DATE_LANGUAGE=ENGLISH')));
+   v_time := TO_CHAR(CAST(v_now AS DATE), 'HH24:MI');
+
+   OPEN p_result FOR
+      SELECT
+         dc.course_id,
+         dc.course_name,
+         dc.division,
+         dc.student_count,
+         ct.c_start AS start_time,
+         ct.c_end AS end_time,
+         dc.room,
+         CASE
+            WHEN ct.c_start IS NULL OR ct.c_end IS NULL THEN 'SCHEDULED'
+            WHEN v_time >= ct.c_start AND v_time < ct.c_end THEN 'IN_PROGRESS'
+            WHEN v_time >= ct.c_end THEN 'COMPLETED'
+            ELSE 'SCHEDULED'
+         END AS schedule_status
+      FROM V_PROFESSOR_DASHBOARD_CLASS dc
+      JOIN class_time ct
+        ON ct.c_id = dc.course_id
+       AND ct.c_no = dc.division_no
+      WHERE dc.professor_user_id = p_professor_user_id
+        AND dc.c_status != 'CANCELLED'
+        AND dc.c_year = v_year
+        AND dc.c_semester = v_semester
+        AND ct.c_day = v_day
+      ORDER BY ct.c_start, dc.course_name, dc.division_no;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE GET_PROFESSOR_ASSIGNED_COURSES(
+   p_professor_user_id IN user_account.user_id%TYPE,
+   p_semester          IN VARCHAR2,
+   p_result            OUT SYS_REFCURSOR
+)
+IS
+   v_year     class.c_year%TYPE;
+   v_semester class.c_semester%TYPE;
+BEGIN
+   IF p_semester IS NULL OR TRIM(p_semester) IS NULL THEN
+      v_year := Date2EnrollYear(SYSDATE);
+      v_semester := Date2EnrollSemester(SYSDATE);
+   ELSE
+      v_year := TO_NUMBER(REGEXP_SUBSTR(TRIM(p_semester), '^[0-9]{4}'));
+      v_semester := TO_NUMBER(REGEXP_SUBSTR(TRIM(p_semester), '-([12])', 1, 1, NULL, 1));
+   END IF;
+
+   OPEN p_result FOR
+      SELECT
+         dc.course_id,
+         dc.course_name,
+         dc.division,
+         dc.student_count,
+         dc.max_students,
+         ROUND(AVG(r.rating_overall), 1) AS satisfaction
+      FROM V_PROFESSOR_DASHBOARD_CLASS dc
+      LEFT JOIN enroll e
+        ON e.c_id = dc.course_id
+       AND e.c_no = dc.division_no
+       AND e.e_status = 'ENROLLED'
+      LEFT JOIN review r
+        ON r.e_id = e.e_id
+      WHERE dc.professor_user_id = p_professor_user_id
+        AND dc.c_status != 'CANCELLED'
+        AND dc.c_year = v_year
+        AND dc.c_semester = v_semester
+      GROUP BY
+         dc.course_id,
+         dc.course_name,
+         dc.division,
+         dc.division_no,
+         dc.student_count,
+         dc.max_students
+      ORDER BY dc.course_name, dc.division_no;
+END;
+/
 CREATE OR REPLACE PROCEDURE InsertEnroll(
     sStudentId   IN student.s_id%TYPE,
     sCourseId    IN class.c_id%TYPE,
