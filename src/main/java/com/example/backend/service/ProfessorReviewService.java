@@ -3,22 +3,24 @@ package com.example.backend.service;
 import com.example.backend.apiPayload.code.status.ErrorStatus;
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
 import com.example.backend.dto.professor.ProfessorReviewItem;
-import com.example.backend.dto.professor.ProfessorReviewItemAverages;
 import com.example.backend.dto.professor.ProfessorReviewResponse;
 import com.example.backend.dto.professor.ProfessorReviewResponse.ItemAverages;
 import com.example.backend.dto.professor.ProfessorReviewResponse.ReviewItem;
 import com.example.backend.dto.professor.ProfessorReviewResponse.Summary;
-import com.example.backend.dto.professor.ProfessorReviewSummary;
 import com.example.backend.mapper.ProfessorReviewMapper;
 import com.example.backend.security.AuthenticatedUser;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProfessorReviewService {
 
-  private static final String DEFAULT_SORT = "LATEST";
+  private static final String RESULT_SUCCESS = "SUCCESS";
+  private static final String RESULT_COURSE_NOT_FOUND = "COURSE_NOT_FOUND";
+  private static final String RESULT_DIVISION_REQUIRED = "DIVISION_REQUIRED";
 
   private final ProfessorReviewMapper reviewMapper;
 
@@ -30,40 +32,45 @@ public class ProfessorReviewService {
   public ProfessorReviewResponse getReviews(
       AuthenticatedUser currentUser, String courseId, String division, String semester, String sort) {
     Long professorUserId = currentUser.requireProfessorUserId();
-    String normalizedDivision = normalizeRequiredDivision(division);
-    String normalizedSemester = normalize(semester);
-    String normalizedSort = normalizeSort(sort);
 
-    if (reviewMapper.existsCourse(professorUserId, courseId, normalizedDivision, normalizedSemester)
-        <= 0) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_COURSE_NOT_FOUND);
-    }
+    Map<String, Object> params = new HashMap<>();
+    params.put("professorUserId", professorUserId);
+    params.put("courseId", courseId);
+    params.put("division", division);
+    params.put("semester", semester);
+    params.put("sort", sort);
+    reviewMapper.callGetProfessorReviews(params);
+    handleResult(stringValue(params.get("result")));
 
-    ProfessorReviewSummary summary =
-        nullToEmptySummary(
-            reviewMapper.findSummary(professorUserId, courseId, normalizedDivision, normalizedSemester));
-    ProfessorReviewItemAverages itemAverages =
-        nullToEmptyItemAverages(
-            reviewMapper.findItemAverages(
-                professorUserId, courseId, normalizedDivision, normalizedSemester));
     List<ReviewItem> reviews =
-        reviewMapper
-            .findReviews(professorUserId, courseId, normalizedDivision, normalizedSemester, normalizedSort)
-            .stream()
+        listValue(params.get("reviews")).stream()
             .map(this::toReviewItem)
             .toList();
 
     return new ProfessorReviewResponse(
         new Summary(
-            ratingValue(summary.avgRating()),
-            participationRate(summary.participantCount(), summary.totalStudents()),
-            intValue(summary.participantCount())),
+            valueOrDash(doubleObject(params.get("avgRating"))),
+            valueOrDash(intObject(params.get("participationRate"))),
+            intValue(intObject(params.get("participantCount")))),
         new ItemAverages(
-            ratingValue(itemAverages.overall()),
-            ratingValue(itemAverages.content()),
-            ratingValue(itemAverages.workload()),
-            ratingValue(itemAverages.kindness())),
+            valueOrDash(doubleObject(params.get("itemOverall"))),
+            valueOrDash(doubleObject(params.get("itemContent"))),
+            valueOrDash(doubleObject(params.get("itemWorkload"))),
+            valueOrDash(doubleObject(params.get("itemKindness")))),
         reviews);
+  }
+
+  private void handleResult(String result) {
+    if (RESULT_SUCCESS.equals(result)) {
+      return;
+    }
+    if (RESULT_DIVISION_REQUIRED.equals(result)) {
+      throw new ProfessorHandler(ErrorStatus.PROFESSOR_DIVISION_REQUIRED);
+    }
+    if (RESULT_COURSE_NOT_FOUND.equals(result)) {
+      throw new ProfessorHandler(ErrorStatus.PROFESSOR_COURSE_NOT_FOUND);
+    }
+    throw new ProfessorHandler(ErrorStatus.PROFESSOR_COURSE_NOT_FOUND);
   }
 
   private ReviewItem toReviewItem(ProfessorReviewItem review) {
@@ -77,27 +84,7 @@ public class ProfessorReviewService {
         review.writer());
   }
 
-  private ProfessorReviewSummary nullToEmptySummary(ProfessorReviewSummary summary) {
-    return summary == null ? new ProfessorReviewSummary(null, 0, 0) : summary;
-  }
-
-  private ProfessorReviewItemAverages nullToEmptyItemAverages(
-      ProfessorReviewItemAverages itemAverages) {
-    return itemAverages == null
-        ? new ProfessorReviewItemAverages(null, null, null, null)
-        : itemAverages;
-  }
-
-  private Object participationRate(Integer participantCount, Integer totalStudents) {
-    int participants = intValue(participantCount);
-    int students = intValue(totalStudents);
-    if (students <= 0) {
-      return "-";
-    }
-    return (int) Math.round(participants * 100.0 / students);
-  }
-
-  private Object ratingValue(Double value) {
+  private Object valueOrDash(Object value) {
     return value == null ? "-" : value;
   }
 
@@ -105,29 +92,32 @@ public class ProfessorReviewService {
     return value == null ? 0 : value;
   }
 
-  private String normalizeRequiredDivision(String division) {
-    if (isBlank(division)) {
-      throw new ProfessorHandler(ErrorStatus.PROFESSOR_DIVISION_REQUIRED);
+  private Integer intObject(Object value) {
+    if (value == null) {
+      return null;
     }
-    return division.trim();
-  }
-
-  private String normalizeSort(String sort) {
-    String normalized = normalize(sort);
-    if (normalized == null) {
-      return DEFAULT_SORT;
+    if (value instanceof Number number) {
+      return number.intValue();
     }
-    return switch (normalized) {
-      case "LATEST", "RATING_DESC", "RATING_ASC" -> normalized;
-      default -> DEFAULT_SORT;
-    };
+    return Integer.valueOf(String.valueOf(value));
   }
 
-  private String normalize(String value) {
-    return isBlank(value) ? null : value.trim();
+  private Double doubleObject(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof Number number) {
+      return number.doubleValue();
+    }
+    return Double.valueOf(String.valueOf(value));
   }
 
-  private boolean isBlank(String value) {
-    return value == null || value.trim().isEmpty();
+  private String stringValue(Object value) {
+    return value == null ? null : String.valueOf(value);
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<ProfessorReviewItem> listValue(Object value) {
+    return value instanceof List<?> list ? (List<ProfessorReviewItem>) list : List.of();
   }
 }

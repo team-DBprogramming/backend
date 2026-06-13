@@ -24,20 +24,18 @@ public class ProfessorCourseService {
   public ProfessorCourseListResponse getCourses(
       AuthenticatedUser currentUser, String semester, String keyword) {
     Long professorUserId = currentUser.requireProfessorUserId();
-    String normalizedSemester = normalize(semester);
-    String normalizedKeyword = normalize(keyword);
     List<CourseItem> courses =
-        courseMapper.findCourses(professorUserId, normalizedSemester, normalizedKeyword).stream()
+        courseMapper.findCourses(professorUserId, semester, keyword).stream()
             .map(this::toCourseItem)
             .toList();
     ProfessorCourseStatistics statistics =
-        nullToEmptyStatistics(courseMapper.findStatistics(professorUserId, normalizedSemester));
+        courseMapper.findStatistics(professorUserId, semester);
 
     return new ProfessorCourseListResponse(
         courses,
         new Statistics(
-            intValue(statistics.getTotalCourses()),
-            intValue(statistics.getTotalStudents()),
+            statistics.getTotalCourses(),
+            statistics.getTotalStudents(),
             satisfactionValue(statistics.getAvgSatisfaction())));
   }
 
@@ -46,35 +44,15 @@ public class ProfessorCourseService {
         course.getCourseId(),
         course.getCourseName(),
         course.getDivision(),
-        intValue(course.getCredit()),
-        valueOrEmpty(course.getSchedule()),
-        valueOrEmpty(course.getRoom()),
-        intValue(course.getCapacity()),
-        intValue(course.getEnrolled()),
+        course.getCredit(),
+        course.getSchedule(),
+        course.getRoom(),
+        course.getCapacity(),
+        course.getEnrolled(),
         satisfactionValue(course.getAvgSatisfaction()));
-  }
-
-  private ProfessorCourseStatistics nullToEmptyStatistics(ProfessorCourseStatistics statistics) {
-    return statistics == null ? new ProfessorCourseStatistics(0, 0, null) : statistics;
   }
 
   private Object satisfactionValue(Double value) {
     return value == null ? "-" : value;
-  }
-
-  private int intValue(Integer value) {
-    return value == null ? 0 : value;
-  }
-
-  private String valueOrEmpty(String value) {
-    return value == null ? "" : value;
-  }
-
-  private String normalize(String value) {
-    return isBlank(value) ? null : value.trim();
-  }
-
-  private boolean isBlank(String value) {
-    return value == null || value.trim().isEmpty();
   }
 }

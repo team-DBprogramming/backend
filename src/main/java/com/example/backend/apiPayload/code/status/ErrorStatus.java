@@ -26,7 +26,7 @@ public enum ErrorStatus implements BaseErrorCode {
   PROFESSOR_REQUEST_INVALID_STATUS(
       HttpStatus.BAD_REQUEST, "PROFESSOR4002", "수강 요청 상태는 APPROVED 또는 REJECTED만 가능합니다."),
   PROFESSOR_EXPORT_INVALID_FORMAT(
-      HttpStatus.BAD_REQUEST, "PROFESSOR4003", "다운로드 형식은 xlsx 또는 csv만 가능합니다."),
+      HttpStatus.BAD_REQUEST, "PROFESSOR4003", "다운로드 형식은 xlsx만 가능합니다."),
   PROFESSOR_DIVISION_REQUIRED(HttpStatus.BAD_REQUEST, "PROFESSOR4005", "분반을 입력해주세요."),
   PROFESSOR_MESSAGE_INVALID_RECIPIENT(
       HttpStatus.BAD_REQUEST, "PROFESSOR4006", "메시지 수신 대상이 올바르지 않습니다."),

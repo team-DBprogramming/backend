@@ -37,58 +37,34 @@
     </constructor>
   </resultMap>
 
-  <sql id="recipientCondition">
-    n.recipient_s_id = #{studentId}
-  </sql>
-
   <select id="findNotifications" resultMap="NotificationItemResultMap">
     SELECT
-      TO_CHAR(n.notification_id) AS notification_id,
-      n.title,
-      DBMS_LOB.SUBSTR(n.body, 4000, 1) AS body,
-      n.type,
-      n.is_read,
-      TO_CHAR(n.created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
-      n.target_c_id AS target_course_id,
-      CASE WHEN n.target_c_no IS NULL THEN NULL ELSE TO_CHAR(n.target_c_no) || '분반' END AS target_division,
-      TO_CHAR(n.target_request_id) AS target_request_id
-    FROM notification n
-    WHERE <include refid="recipientCondition" />
-    ORDER BY n.created_at DESC, n.notification_id DESC
+      notification_id,
+      title,
+      body,
+      type,
+      is_read,
+      created_at,
+      target_course_id,
+      target_division,
+      target_request_id
+    FROM V_NOTIFICATION_LIST
+    WHERE recipient_s_id = #{studentId}
+    ORDER BY sort_created_at DESC, sort_notification_id DESC
   </select>
 
-  <select id="findNotification" resultMap="NotificationDetailResultMap">
-    SELECT
-      TO_CHAR(n.notification_id) AS notification_id,
-      n.title,
-      DBMS_LOB.SUBSTR(n.body, 4000, 1) AS body,
-      n.type,
-      n.is_read,
-      TO_CHAR(n.created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
-      COALESCE(sender_professor.p_name, sender_student.s_name) AS sender_name,
-      l.no AS course_id,
-      l.subject AS course_name,
-      CASE WHEN c.c_no IS NULL THEN NULL ELSE TO_CHAR(c.c_no) || '분반' END AS division,
-      n.target_c_id AS target_course_id,
-      CASE WHEN n.target_c_no IS NULL THEN NULL ELSE TO_CHAR(n.target_c_no) || '분반' END AS target_division,
-      TO_CHAR(n.target_request_id) AS target_request_id,
-      DBMS_LOB.SUBSTR(cr.reason, 4000, 1) AS request_reason
-    FROM notification n
-    LEFT JOIN student sender_student ON sender_student.s_id = n.sender_s_id
-    LEFT JOIN professor sender_professor ON sender_professor.p_id = n.sender_p_id
-    LEFT JOIN course_request cr ON cr.request_id = n.target_request_id
-    LEFT JOIN class c
-      ON c.c_id = COALESCE(n.target_c_id, cr.c_id)
-     AND c.c_no = COALESCE(n.target_c_no, cr.c_no)
-    LEFT JOIN lecture l ON l.no = c.c_id
-    WHERE <include refid="recipientCondition" />
-      AND TO_CHAR(n.notification_id) = #{notificationId}
+  <select id="callGetNotificationDetail" statementType="CALLABLE" parameterType="map">
+    { call GET_NOTIFICATION_DETAIL(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{notificationId, mode=IN, jdbcType=VARCHAR},
+      #{result, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.NotificationMapper.NotificationDetailResultMap}
+    ) }
   </select>
 
-  <update id="markAsRead">
-    UPDATE notification n
-    SET n.is_read = 1
-    WHERE <include refid="recipientCondition" />
-      AND TO_CHAR(n.notification_id) = #{notificationId}
-  </update>
+  <select id="callMarkNotificationAsRead" statementType="CALLABLE">
+    { call MARK_NOTIFICATION_AS_READ(
+      #{studentId, mode=IN, jdbcType=VARCHAR},
+      #{notificationId, mode=IN, jdbcType=VARCHAR}
+    ) }
+  </select>
 </mapper>

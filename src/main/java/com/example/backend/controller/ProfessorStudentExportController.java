@@ -1,6 +1,5 @@
 package com.example.backend.controller;
 
-import com.example.backend.config.OpenApiExamples;
 import com.example.backend.dto.professor.ProfessorStudentExportFile;
 import com.example.backend.security.CustomUserDetails;
 import com.example.backend.service.ProfessorStudentExportService;
@@ -34,18 +33,14 @@ public class ProfessorStudentExportController {
   }
 
   @GetMapping
-  @Operation(
-      summary = "수강생 명단 내보내기",
-      description = "담당 강의의 수강생 명단을 xlsx 또는 csv 파일로 다운로드합니다.")
+  @Operation(summary = "수강생 명단 내보내기", description = "해당 강의의 수강생 명단을 xlsx 파일로 다운로드합니다.")
   @io.swagger.v3.oas.annotations.responses.ApiResponse(
       responseCode = "200",
       description = "파일 다운로드 성공",
-      content = {
-        @Content(
-            mediaType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            schema = @Schema(type = "string", format = "binary")),
-        @Content(mediaType = "text/csv", schema = @Schema(type = "string", format = "binary"))
-      })
+      content =
+          @Content(
+              mediaType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              schema = @Schema(type = "string", format = "binary")))
   @io.swagger.v3.oas.annotations.responses.ApiResponse(
       responseCode = "400",
       description = "지원하지 않는 다운로드 형식",
@@ -59,7 +54,7 @@ public class ProfessorStudentExportController {
                           {
                             "isSuccess": false,
                             "code": "PROFESSOR4003",
-                            "message": "다운로드 형식은 xlsx 또는 csv만 가능합니다.",
+                            "message": "다운로드 형식은 xlsx만 가능합니다.",
                             "result": null
                           }
                           """)))

@@ -73,6 +73,16 @@ class ProfessorCourseServiceTest {
   }
 
   @Test
+  void getCoursesLeavesParameterNormalizationToSql() {
+    courseMapper.statistics = new ProfessorCourseStatistics(0, 0, null);
+
+    courseService.getCourses(professorUser(), " 2026-1 ", " database ");
+
+    assertThat(courseMapper.requestedSemester).isEqualTo(" 2026-1 ");
+    assertThat(courseMapper.requestedKeyword).isEqualTo(" database ");
+  }
+
+  @Test
   void getCoursesRejectsStudentToken() {
 
     assertThatThrownBy(() -> courseService.getCourses(studentUser(), "2026-1", null))

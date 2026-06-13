@@ -25,94 +25,19 @@
     </constructor>
   </resultMap>
 
-  <sql id="divisionCondition">
-    (cs.section_no = #{division} OR cs.section_no || '분반' = #{division})
-  </sql>
-
-  <select id="findStudentSummary" resultMap="StudentSummaryResultMap">
-    SELECT
-      c.course_name,
-      c.course_code AS course_id,
-      cs.section_no || '분반' AS division,
-      TO_CHAR(sm.year) || '-' ||
-        CASE sm.term
-          WHEN 'SPRING' THEN '1'
-          WHEN 'FALL' THEN '2'
-          ELSE sm.term
-        END || '학기' AS semester,
-      cs.enrolled_count AS total_students,
-      (
-        SELECT COUNT(*)
-        FROM course_request cr
-        WHERE cr.section_id = cs.section_id
-          AND cr.status = 'PENDING'
-      ) AS request_count
-    FROM professor p
-    JOIN course_section cs ON cs.professor_id = p.professor_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE p.user_id = #{professorUserId}
-      AND c.course_code = #{courseId}
-      AND <include refid="divisionCondition" />
-      AND cs.status != 'CANCELLED'
-      AND sm.is_current = 1
-  </select>
-
-  <select id="findStudents" resultMap="StudentItemResultMap">
-    SELECT
-      student_id,
-      name,
-      grade,
-      major,
-      is_retake
-    FROM (
-      SELECT
-        ua.login_id AS student_id,
-        s.name,
-        s.year_level AS grade,
-        d.dept_name AS major,
-        CASE
-          WHEN EXISTS (
-            SELECT 1
-            FROM enrollment prev_e
-            JOIN course_section prev_cs ON prev_cs.section_id = prev_e.section_id
-            JOIN course prev_c ON prev_c.course_id = prev_cs.course_id
-            WHERE prev_e.student_id = s.student_id
-              AND prev_c.course_code = c.course_code
-              AND prev_cs.semester_id != cs.semester_id
-              AND prev_e.status = 'COMPLETED'
-          ) THEN 1
-          ELSE 0
-        END AS is_retake,
-        ROW_NUMBER() OVER (ORDER BY ua.login_id) AS row_num
-      FROM professor p
-      JOIN course_section cs ON cs.professor_id = p.professor_id
-      JOIN course c ON c.course_id = cs.course_id
-      JOIN semester sm ON sm.semester_id = cs.semester_id
-      JOIN enrollment e ON e.section_id = cs.section_id
-      JOIN student s ON s.student_id = e.student_id
-      JOIN user_account ua ON ua.user_id = s.user_id
-      JOIN department d ON d.dept_id = s.dept_id
-      WHERE p.user_id = #{professorUserId}
-        AND c.course_code = #{courseId}
-        AND <include refid="divisionCondition" />
-        AND cs.status != 'CANCELLED'
-        AND sm.is_current = 1
-        AND e.status = 'ENROLLED'
-        AND (
-          #{keyword} IS NULL
-          OR LOWER(ua.login_id) LIKE '%' || #{keyword} || '%'
-          OR LOWER(s.name) LIKE '%' || #{keyword} || '%'
-        )
-        AND (#{grade} IS NULL OR s.year_level = #{grade})
-        AND (
-          #{major} IS NULL
-          OR LOWER(d.dept_name) LIKE '%' || #{major} || '%'
-          OR LOWER(d.dept_code) LIKE '%' || #{major} || '%'
-        )
-    )
-    WHERE row_num &gt; #{offset}
-      AND row_num &lt;= #{offset} + #{size}
-    ORDER BY row_num
+  <select id="callGetProfessorStudentList" statementType="CALLABLE" parameterType="map">
+    { call GET_PROFESSOR_STUDENT_LIST(
+      #{professorUserId, mode=IN, jdbcType=NUMERIC},
+      #{courseId, mode=IN, jdbcType=VARCHAR},
+      #{division, mode=IN, jdbcType=VARCHAR},
+      #{keyword, mode=IN, jdbcType=VARCHAR},
+      #{grade, mode=IN, jdbcType=NUMERIC},
+      #{major, mode=IN, jdbcType=VARCHAR},
+      #{page, mode=IN, jdbcType=NUMERIC},
+      #{size, mode=IN, jdbcType=NUMERIC},
+      #{result, mode=OUT, jdbcType=VARCHAR},
+      #{summary, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.ProfessorStudentMapper.StudentSummaryResultMap},
+      #{students, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.ProfessorStudentMapper.StudentItemResultMap}
+    ) }
   </select>
 </mapper>

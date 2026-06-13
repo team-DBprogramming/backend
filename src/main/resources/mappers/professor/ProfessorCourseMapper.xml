@@ -24,104 +24,110 @@
 
   <sql id="semesterCondition">
     (
-      (#{semester} IS NULL AND sm.is_current = 1)
+      (
+        (#{semester} IS NULL OR LENGTH(TRIM(#{semester})) = 0)
+        AND cls.c_year = Date2EnrollYear(SYSDATE)
+        AND cls.c_semester = Date2EnrollSemester(SYSDATE)
+      )
       OR
       (
         #{semester} IS NOT NULL
-        AND TO_CHAR(sm.year) || '-' ||
-          CASE sm.term
-            WHEN 'SPRING' THEN '1'
-            WHEN 'FALL' THEN '2'
-            ELSE sm.term
-          END = #{semester}
+        AND LENGTH(TRIM(#{semester})) &gt; 0
+        AND TO_CHAR(cls.c_year) || '-' || TO_CHAR(cls.c_semester) = TRIM(#{semester})
       )
     )
   </sql>
 
   <select id="findCourses" resultMap="ProfessorCourseItemResultMap">
     SELECT
-      c.course_code AS course_id,
-      c.course_name,
-      cs.section_no || '분반' AS division,
-      c.credits AS credit,
-      (
+      l.no AS course_id,
+      l.subject AS course_name,
+      cls.c_no || '분반' AS division,
+      l.credit AS credit,
+      COALESCE((
         SELECT LISTAGG(
-          CASE ss.day_of_week
+          CASE ct.c_day
             WHEN 'MON' THEN '월'
             WHEN 'TUE' THEN '화'
             WHEN 'WED' THEN '수'
             WHEN 'THU' THEN '목'
             WHEN 'FRI' THEN '금'
             WHEN 'SAT' THEN '토'
-            ELSE ss.day_of_week
-          END || ' ' || ss.start_time || '-' || ss.end_time,
+            ELSE ct.c_day
+          END || ' ' || ct.c_start || '-' || ct.c_end,
           ', '
-        ) WITHIN GROUP (ORDER BY ss.start_time, ss.day_of_week)
-        FROM section_schedule ss
-        WHERE ss.section_id = cs.section_id
-      ) AS schedule,
-      (
-        SELECT LISTAGG(room_name, ', ') WITHIN GROUP (ORDER BY room_name)
-        FROM (
-          SELECT DISTINCT cr.building || ' ' || cr.room_no AS room_name
-          FROM section_schedule ss
-          JOIN classroom cr ON cr.classroom_id = ss.classroom_id
-          WHERE ss.section_id = cs.section_id
-        )
-      ) AS room,
-      cs.capacity,
-      COALESCE(cs.enrolled_count, 0) AS enrolled,
+        ) WITHIN GROUP (ORDER BY ct.c_start, ct.c_day)
+        FROM class_time ct
+        WHERE ct.c_id = cls.c_id
+          AND ct.c_no = cls.c_no
+      ), '') AS schedule,
+      COALESCE(cls.c_where, '') AS room,
+      cls.c_max AS capacity,
+      COALESCE(cls.c_now, 0) AS enrolled,
       (
         SELECT ROUND(AVG(r.rating_overall), 1)
-        FROM enrollment e
-        JOIN review r ON r.enrollment_id = e.enrollment_id
-        WHERE e.section_id = cs.section_id
-          AND e.status = 'ENROLLED'
+        FROM enroll e
+        JOIN review r ON r.e_id = e.e_id
+        WHERE e.c_id = cls.c_id
+          AND e.c_no = cls.c_no
+          AND e.e_year = cls.c_year
+          AND e.e_semester = cls.c_semester
+          AND e.e_status = 'ENROLLED'
       ) AS avg_satisfaction
-    FROM professor p
-    JOIN course_section cs ON cs.professor_id = p.professor_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE p.user_id = #{userId}
-      AND cs.status != 'CANCELLED'
+    FROM user_account ua
+    JOIN professor p ON p.p_id = ua.login_id
+    JOIN class cls ON cls.p_id = p.p_id
+    JOIN lecture l ON l.no = cls.c_id
+    WHERE ua.user_id = #{userId}
+      AND ua.role = 'PROFESSOR'
+      AND cls.c_status != 'CANCELLED'
       AND <include refid="semesterCondition" />
       AND (
         #{keyword} IS NULL
-        OR LOWER(c.course_name) LIKE '%' || LOWER(#{keyword}) || '%'
-        OR LOWER(c.course_code) LIKE '%' || LOWER(#{keyword}) || '%'
+        OR LENGTH(TRIM(#{keyword})) = 0
+        OR LOWER(l.subject) LIKE '%' || LOWER(TRIM(#{keyword})) || '%'
+        OR LOWER(l.no) LIKE '%' || LOWER(TRIM(#{keyword})) || '%'
       )
-    ORDER BY c.course_name, cs.section_no
+    ORDER BY l.subject, cls.c_no
   </select>
 
   <select id="findStatistics" resultMap="ProfessorCourseStatisticsResultMap">
     SELECT
       (
-        SELECT COUNT(DISTINCT cs.section_id)
-        FROM professor p
-        JOIN course_section cs ON cs.professor_id = p.professor_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        WHERE p.user_id = #{userId}
-          AND cs.status != 'CANCELLED'
+        SELECT COUNT(*)
+        FROM user_account ua
+        JOIN professor p ON p.p_id = ua.login_id
+        JOIN class cls ON cls.p_id = p.p_id
+        WHERE ua.user_id = #{userId}
+          AND ua.role = 'PROFESSOR'
+          AND cls.c_status != 'CANCELLED'
           AND <include refid="semesterCondition" />
       ) AS total_courses,
       (
-        SELECT COALESCE(SUM(cs.enrolled_count), 0)
-        FROM professor p
-        JOIN course_section cs ON cs.professor_id = p.professor_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        WHERE p.user_id = #{userId}
-          AND cs.status != 'CANCELLED'
+        SELECT COALESCE(SUM(cls.c_now), 0)
+        FROM user_account ua
+        JOIN professor p ON p.p_id = ua.login_id
+        JOIN class cls ON cls.p_id = p.p_id
+        WHERE ua.user_id = #{userId}
+          AND ua.role = 'PROFESSOR'
+          AND cls.c_status != 'CANCELLED'
           AND <include refid="semesterCondition" />
       ) AS total_students,
       (
         SELECT ROUND(AVG(r.rating_overall), 1)
-        FROM professor p
-        JOIN course_section cs ON cs.professor_id = p.professor_id
-        JOIN semester sm ON sm.semester_id = cs.semester_id
-        JOIN enrollment e ON e.section_id = cs.section_id AND e.status = 'ENROLLED'
-        JOIN review r ON r.enrollment_id = e.enrollment_id
-        WHERE p.user_id = #{userId}
-          AND cs.status != 'CANCELLED'
+        FROM user_account ua
+        JOIN professor p ON p.p_id = ua.login_id
+        JOIN class cls ON cls.p_id = p.p_id
+        JOIN enroll e
+          ON e.c_id = cls.c_id
+         AND e.c_no = cls.c_no
+         AND e.e_year = cls.c_year
+         AND e.e_semester = cls.c_semester
+         AND e.e_status = 'ENROLLED'
+        JOIN review r ON r.e_id = e.e_id
+        WHERE ua.user_id = #{userId}
+          AND ua.role = 'PROFESSOR'
+          AND cls.c_status != 'CANCELLED'
           AND <include refid="semesterCondition" />
       ) AS avg_satisfaction
     FROM dual

@@ -4,67 +4,15 @@
     "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.example.backend.mapper.ProfessorMessageMapper">
-  <resultMap id="ProfessorMessageRecipientResultMap" type="com.example.backend.dto.professor.ProfessorMessageRecipient">
-    <constructor>
-      <arg column="user_id" javaType="java.lang.Long" />
-      <arg column="student_id" javaType="java.lang.String" />
-    </constructor>
-  </resultMap>
-
-  <sql id="divisionCondition">
-    (cs.section_no = #{division} OR cs.section_no || '분반' = #{division})
-  </sql>
-
-  <select id="findTargetSectionId" resultType="java.lang.Long">
-    SELECT cs.section_id
-    FROM professor p
-    JOIN course_section cs ON cs.professor_id = p.professor_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE p.user_id = #{professorUserId}
-      AND c.course_code = #{courseId}
-      AND <include refid="divisionCondition" />
-      AND cs.status != 'CANCELLED'
-      AND sm.is_current = 1
+  <select id="sendProfessorMessage" statementType="CALLABLE" parameterType="map">
+    { CALL SEND_PROFESSOR_MESSAGE(
+      #{professorUserId, mode=IN, jdbcType=NUMERIC},
+      #{courseId, mode=IN, jdbcType=VARCHAR},
+      #{division, mode=IN, jdbcType=VARCHAR},
+      #{studentIds, mode=IN, jdbcType=VARCHAR},
+      #{message, mode=IN, jdbcType=CLOB},
+      #{result, mode=OUT, jdbcType=VARCHAR},
+      #{sentCount, mode=OUT, jdbcType=NUMERIC}
+    ) }
   </select>
-
-  <select id="findRecipients" resultMap="ProfessorMessageRecipientResultMap">
-    SELECT
-      ua.user_id,
-      ua.login_id AS student_id
-    FROM enrollment e
-    JOIN student s ON s.student_id = e.student_id
-    JOIN user_account ua ON ua.user_id = s.user_id
-    WHERE e.section_id = #{sectionId}
-      AND e.status = 'ENROLLED'
-      AND ua.login_id IN
-      <foreach collection="studentIds" item="studentId" open="(" separator="," close=")">
-        #{studentId}
-      </foreach>
-    ORDER BY ua.login_id
-  </select>
-
-  <insert id="insertProfessorMessageNotification">
-    INSERT INTO notification (
-      notification_id,
-      recipient_user_id,
-      sender_user_id,
-      target_section_id,
-      title,
-      body,
-      type,
-      is_read,
-      created_at
-    ) VALUES (
-      (SELECT COALESCE(MAX(notification_id), 0) + 1 FROM notification),
-      #{recipientUserId},
-      #{senderUserId},
-      #{targetSectionId},
-      #{title},
-      #{body},
-      #{type},
-      0,
-      #{createdAt}
-    )
-  </insert>
 </mapper>

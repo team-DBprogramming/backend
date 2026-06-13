@@ -12,8 +12,7 @@ services:
       TZ: ${TZ}
     volumes:
       - oracle-data:/opt/oracle/oradata
-      - ./src/main/resources/db/schema.sql:/container-entrypoint-initdb.d/01-schema.sql:ro
-      - ./src/main/resources/db/dummy-data.sql:/container-entrypoint-initdb.d/02-dummy-data.sql:ro
+      - ./src/main/resources/db/init:/container-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh"]
       interval: 10s

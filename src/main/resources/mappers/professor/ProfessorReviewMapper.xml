@@ -4,23 +4,6 @@
     "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.example.backend.mapper.ProfessorReviewMapper">
-  <resultMap id="ProfessorReviewSummaryResultMap" type="com.example.backend.dto.professor.ProfessorReviewSummary">
-    <constructor>
-      <arg column="avg_rating" javaType="java.lang.Double" />
-      <arg column="participant_count" javaType="java.lang.Integer" />
-      <arg column="total_students" javaType="java.lang.Integer" />
-    </constructor>
-  </resultMap>
-
-  <resultMap id="ProfessorReviewItemAveragesResultMap" type="com.example.backend.dto.professor.ProfessorReviewItemAverages">
-    <constructor>
-      <arg column="overall" javaType="java.lang.Double" />
-      <arg column="content" javaType="java.lang.Double" />
-      <arg column="workload" javaType="java.lang.Double" />
-      <arg column="kindness" javaType="java.lang.Double" />
-    </constructor>
-  </resultMap>
-
   <resultMap id="ProfessorReviewItemResultMap" type="com.example.backend.dto.professor.ProfessorReviewItem">
     <constructor>
       <arg column="review_id" javaType="java.lang.String" />
@@ -33,98 +16,22 @@
     </constructor>
   </resultMap>
 
-  <sql id="semesterCondition">
-    (
-      (#{semester} IS NULL AND sm.is_current = 1)
-      OR
-      (
-        #{semester} IS NOT NULL
-        AND TO_CHAR(sm.year) || '-' ||
-          CASE sm.term
-            WHEN 'SPRING' THEN '1'
-            WHEN 'FALL' THEN '2'
-            ELSE sm.term
-          END = #{semester}
-      )
-    )
-  </sql>
-
-  <sql id="divisionCondition">
-    (cs.section_no = #{division} OR cs.section_no || '분반' = #{division})
-  </sql>
-
-  <sql id="targetSections">
-    SELECT cs.section_id, cs.enrolled_count
-    FROM professor p
-    JOIN course_section cs ON cs.professor_id = p.professor_id
-    JOIN course c ON c.course_id = cs.course_id
-    JOIN semester sm ON sm.semester_id = cs.semester_id
-    WHERE p.user_id = #{professorUserId}
-      AND c.course_code = #{courseId}
-      AND <include refid="divisionCondition" />
-      AND cs.status != 'CANCELLED'
-      AND <include refid="semesterCondition" />
-  </sql>
-
-  <select id="existsCourse" resultType="int">
-    SELECT COUNT(*)
-    FROM (
-      <include refid="targetSections" />
-    )
-  </select>
-
-  <select id="findSummary" resultMap="ProfessorReviewSummaryResultMap">
-    WITH target_sections AS (
-      <include refid="targetSections" />
-    )
-    SELECT
-      ROUND(AVG(r.rating_overall), 1) AS avg_rating,
-      COUNT(r.review_id) AS participant_count,
-      (SELECT COALESCE(SUM(enrolled_count), 0) FROM target_sections) AS total_students
-    FROM target_sections ts
-    LEFT JOIN enrollment e ON e.section_id = ts.section_id AND e.status = 'ENROLLED'
-    LEFT JOIN review r ON r.enrollment_id = e.enrollment_id
-  </select>
-
-  <select id="findItemAverages" resultMap="ProfessorReviewItemAveragesResultMap">
-    WITH target_sections AS (
-      <include refid="targetSections" />
-    )
-    SELECT
-      ROUND(AVG(r.rating_overall), 1) AS overall,
-      ROUND(AVG(r.rating_content), 1) AS content,
-      ROUND(AVG(r.rating_workload), 1) AS workload,
-      ROUND(AVG(r.rating_professor), 1) AS kindness
-    FROM target_sections ts
-    JOIN enrollment e ON e.section_id = ts.section_id AND e.status = 'ENROLLED'
-    JOIN review r ON r.enrollment_id = e.enrollment_id
-  </select>
-
-  <select id="findReviews" resultMap="ProfessorReviewItemResultMap">
-    WITH target_sections AS (
-      <include refid="targetSections" />
-    )
-    SELECT
-      TO_CHAR(r.review_id) AS review_id,
-      r.rating_overall AS rating,
-      TO_CHAR(r.created_at, 'YYYY.MM.DD') AS created_at,
-      DBMS_LOB.SUBSTR(r.pros, 4000, 1) AS pros,
-      DBMS_LOB.SUBSTR(r.cons, 4000, 1) AS cons,
-      DBMS_LOB.SUBSTR(r.advice, 4000, 1) AS tip,
-      '익명' AS writer
-    FROM target_sections ts
-    JOIN enrollment e ON e.section_id = ts.section_id AND e.status = 'ENROLLED'
-    JOIN review r ON r.enrollment_id = e.enrollment_id
-    <choose>
-      <when test="sort == 'RATING_DESC'">
-        ORDER BY r.rating_overall DESC, r.created_at DESC, r.review_id DESC
-      </when>
-      <when test="sort == 'RATING_ASC'">
-        ORDER BY r.rating_overall ASC, r.created_at DESC, r.review_id DESC
-      </when>
-      <otherwise>
-        ORDER BY r.created_at DESC, r.review_id DESC
-      </otherwise>
-    </choose>
+  <select id="callGetProfessorReviews" statementType="CALLABLE" parameterType="map">
+    { CALL GET_PROFESSOR_REVIEWS(
+      #{professorUserId, mode=IN, jdbcType=NUMERIC},
+      #{courseId, mode=IN, jdbcType=VARCHAR},
+      #{division, mode=IN, jdbcType=VARCHAR},
+      #{semester, mode=IN, jdbcType=VARCHAR},
+      #{sort, mode=IN, jdbcType=VARCHAR},
+      #{result, mode=OUT, jdbcType=VARCHAR},
+      #{avgRating, mode=OUT, jdbcType=NUMERIC},
+      #{participationRate, mode=OUT, jdbcType=NUMERIC},
+      #{participantCount, mode=OUT, jdbcType=NUMERIC},
+      #{itemOverall, mode=OUT, jdbcType=NUMERIC},
+      #{itemContent, mode=OUT, jdbcType=NUMERIC},
+      #{itemWorkload, mode=OUT, jdbcType=NUMERIC},
+      #{itemKindness, mode=OUT, jdbcType=NUMERIC},
+      #{reviews, mode=OUT, jdbcType=CURSOR, javaType=java.sql.ResultSet, resultMap=com.example.backend.mapper.ProfessorReviewMapper.ProfessorReviewItemResultMap}
+    ) }
   </select>
 </mapper>

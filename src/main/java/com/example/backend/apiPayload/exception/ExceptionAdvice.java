@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -92,6 +93,21 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
   }
 
   @ExceptionHandler
+  public ResponseEntity<Object> dataAccessException(DataAccessException e, WebRequest request) {
+    if (containsAnyMessage(e, "ORA-20041", "ORA-20042", "NOTIFICATION_NOT_FOUND")) {
+      return handleExceptionInternalConstraint(
+          e, ErrorStatus.NOTIFICATION_NOT_FOUND, HttpHeaders.EMPTY, request);
+    }
+    return handleExceptionInternalFalse(
+        e,
+        ErrorStatus._INTERNAL_SERVER_ERROR,
+        HttpHeaders.EMPTY,
+        ErrorStatus._INTERNAL_SERVER_ERROR.getHttpStatus(),
+        request,
+        ErrorStatus._INTERNAL_SERVER_ERROR.getMessage());
+  }
+
+  @ExceptionHandler
   public ResponseEntity<Object> exception(Exception e, WebRequest request) {
     log.error("처리되지 않은 예외가 발생했습니다.", e);
 
@@ -152,5 +168,21 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
     } catch (IllegalArgumentException e) {
       return ErrorStatus._BAD_REQUEST;
     }
+  }
+
+  private boolean containsAnyMessage(Throwable throwable, String... needles) {
+    Throwable current = throwable;
+    while (current != null) {
+      String message = current.getMessage();
+      if (message != null) {
+        for (String needle : needles) {
+          if (message.contains(needle)) {
+            return true;
+          }
+        }
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 }

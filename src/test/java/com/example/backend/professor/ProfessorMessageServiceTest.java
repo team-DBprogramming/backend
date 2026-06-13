@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.backend.apiPayload.exception.handler.ProfessorHandler;
-import com.example.backend.dto.professor.ProfessorMessageRecipient;
 import com.example.backend.dto.professor.ProfessorMessageRequest;
 import com.example.backend.dto.professor.ProfessorMessageResponse;
 import com.example.backend.mapper.ProfessorMessageMapper;
@@ -13,8 +12,8 @@ import com.example.backend.service.ProfessorMessageService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,10 +30,9 @@ class ProfessorMessageServiceTest {
   }
 
   @Test
-  void sendMessageCreatesProfessorMessageNotificationsForSelectedStudents() {
-    messageMapper.sectionId = 101L;
-    messageMapper.recipients.add(new ProfessorMessageRecipient(1L, "2024111111"));
-    messageMapper.recipients.add(new ProfessorMessageRecipient(2L, "2024222222"));
+  void sendMessageCallsProfessorMessageProcedure() {
+    messageMapper.result = "SUCCESS";
+    messageMapper.sentCount = 2;
 
     ProfessorMessageResponse response =
         messageService.sendMessage(
@@ -49,19 +47,13 @@ class ProfessorMessageServiceTest {
     assertThat(messageMapper.requestedProfessorUserId).isEqualTo(10L);
     assertThat(messageMapper.requestedCourseId).isEqualTo("CSE301");
     assertThat(messageMapper.requestedDivision).isEqualTo("01");
-    assertThat(messageMapper.requestedStudentIds).containsExactly("2024111111", "2024222222");
-    assertThat(messageMapper.insertedRecipientUserIds).containsExactly(1L, 2L);
-    assertThat(messageMapper.insertedSenderUserId).isEqualTo(10L);
-    assertThat(messageMapper.insertedSectionId).isEqualTo(101L);
-    assertThat(messageMapper.insertedTitle).isEqualTo("교수님으로부터 새 메시지가 도착했습니다.");
-    assertThat(messageMapper.insertedBody).isEqualTo("다음 수업 전까지 과제 제출 여부를 확인해주세요.");
-    assertThat(messageMapper.insertedType).isEqualTo("PROFESSOR_MESSAGE");
+    assertThat(messageMapper.requestedStudentIds).isEqualTo("2024111111,2024222222,2024111111");
+    assertThat(messageMapper.requestedMessage).isEqualTo("다음 수업 전까지 과제 제출 여부를 확인해주세요.");
   }
 
   @Test
-  void sendMessageRejectsStudentsOutsideSelectedCourseSection() {
-    messageMapper.sectionId = 101L;
-    messageMapper.recipients.add(new ProfessorMessageRecipient(1L, "2024111111"));
+  void sendMessageMapsInvalidRecipientProcedureResult() {
+    messageMapper.result = "INVALID_RECIPIENT";
 
     assertThatThrownBy(
             () ->
@@ -90,48 +82,23 @@ class ProfessorMessageServiceTest {
   }
 
   private static class FakeProfessorMessageMapper implements ProfessorMessageMapper {
-    private Long sectionId;
-    private final List<ProfessorMessageRecipient> recipients = new ArrayList<>();
+    private String result = "SUCCESS";
+    private Integer sentCount = 0;
     private Long requestedProfessorUserId;
     private String requestedCourseId;
     private String requestedDivision;
-    private List<String> requestedStudentIds;
-    private final List<Long> insertedRecipientUserIds = new ArrayList<>();
-    private Long insertedSenderUserId;
-    private Long insertedSectionId;
-    private String insertedTitle;
-    private String insertedBody;
-    private String insertedType;
+    private String requestedStudentIds;
+    private String requestedMessage;
 
     @Override
-    public Long findTargetSectionId(Long professorUserId, String courseId, String division) {
-      requestedProfessorUserId = professorUserId;
-      requestedCourseId = courseId;
-      requestedDivision = division;
-      return sectionId;
-    }
-
-    @Override
-    public List<ProfessorMessageRecipient> findRecipients(Long sectionId, List<String> studentIds) {
-      requestedStudentIds = studentIds;
-      return recipients;
-    }
-
-    @Override
-    public void insertProfessorMessageNotification(
-        Long recipientUserId,
-        Long senderUserId,
-        Long targetSectionId,
-        String title,
-        String body,
-        String type,
-        Instant createdAt) {
-      insertedRecipientUserIds.add(recipientUserId);
-      insertedSenderUserId = senderUserId;
-      insertedSectionId = targetSectionId;
-      insertedTitle = title;
-      insertedBody = body;
-      insertedType = type;
+    public void sendProfessorMessage(Map<String, Object> params) {
+      requestedProfessorUserId = (Long) params.get("professorUserId");
+      requestedCourseId = (String) params.get("courseId");
+      requestedDivision = (String) params.get("division");
+      requestedStudentIds = (String) params.get("studentIds");
+      requestedMessage = (String) params.get("message");
+      params.put("result", result);
+      params.put("sentCount", sentCount);
     }
   }
 }

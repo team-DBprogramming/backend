@@ -53,3 +53,8 @@ out/
 
 ### Local API drafts ###
 professor-api-list.md
+
+### Local agent and reference files ###
+docs/
+.agents/
+skills-lock.json
