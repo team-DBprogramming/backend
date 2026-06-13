@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 class SchemaSqlTest {
 
-  private static final Path SCHEMA_PATH = Path.of("src/main/resources/db/schema.sql");
+  private static final Path SCHEMA_INIT_DIR = Path.of("src/main/resources/db/init");
   private static final Path NOTIFICATION_MAPPER_PATH =
       Path.of("src/main/resources/mappers/notification/NotificationMapper.xml");
   private static final Path PROFESSOR_COURSE_MAPPER_PATH =
@@ -27,7 +27,7 @@ class SchemaSqlTest {
 
   @Test
   void schemaMatchesCommonAndProfessorScope() throws IOException {
-    String schema = Files.readString(SCHEMA_PATH).toLowerCase().replaceAll("\\s+", " ");
+    String schema = readSchemaSql();
 
     assertThat(schema).doesNotContain("create table waitlist");
     assertThat(schema).doesNotContain("create table grade");
@@ -56,23 +56,23 @@ class SchemaSqlTest {
     assertThat(schema).contains("revoked_at timestamp");
     assertThat(schema).contains("create or replace view v_notification_list");
     assertThat(schema).contains("dbms_lob.substr(n.body, 4000, 1) as body");
-    assertThat(schema).contains("|| '분반'");
+    assertThat(schema).contains("|| '遺꾨컲'");
     assertThat(schema).contains("n.created_at as sort_created_at");
   }
 
   @Test
   void notificationListQueryUsesView() throws IOException {
-    String schema = Files.readString(SCHEMA_PATH).toLowerCase().replaceAll("\\s+", " ");
+    String schema = readSchemaSql();
     String mapper = Files.readString(NOTIFICATION_MAPPER_PATH).toLowerCase().replaceAll("\\s+", " ");
 
     assertThat(schema).contains("create or replace view v_notification_list");
-    assertThat(schema).contains("|| '분반'");
+    assertThat(schema).contains("|| '遺꾨컲'");
     assertThat(mapper).contains("from v_notification_list");
   }
 
   @Test
   void notificationDetailUsesViewAndCallableProcedure() throws IOException {
-    String schema = Files.readString(SCHEMA_PATH).toLowerCase().replaceAll("\\s+", " ");
+    String schema = readSchemaSql();
     String mapper = Files.readString(NOTIFICATION_MAPPER_PATH).toLowerCase().replaceAll("\\s+", " ");
 
     assertThat(schema).contains("create or replace view v_notification_detail");
@@ -92,7 +92,7 @@ class SchemaSqlTest {
 
   @Test
   void notificationMarkAsReadUsesCallableProcedureWithRowCountGuard() throws IOException {
-    String schema = Files.readString(SCHEMA_PATH).toLowerCase().replaceAll("\\s+", " ");
+    String schema = readSchemaSql();
     String mapper = Files.readString(NOTIFICATION_MAPPER_PATH).toLowerCase().replaceAll("\\s+", " ");
 
     assertThat(schema).contains("create or replace procedure mark_notification_as_read");
@@ -131,7 +131,7 @@ class SchemaSqlTest {
 
   @Test
   void professorCourseRequestMapperUsesCurrentSchemaAndCallableProcedure() throws IOException {
-    String schema = Files.readString(SCHEMA_PATH).toLowerCase().replaceAll("\\s+", " ");
+    String schema = readSchemaSql();
     String mapper =
         Files.readString(PROFESSOR_COURSE_REQUEST_MAPPER_PATH)
             .toLowerCase()
@@ -169,7 +169,7 @@ class SchemaSqlTest {
 
   @Test
   void professorDashboardMapperUsesCurrentSchemaViewsAndCallableProcedures() throws IOException {
-    String schema = Files.readString(SCHEMA_PATH).toLowerCase().replaceAll("\\s+", " ");
+    String schema = readSchemaSql();
     String mapper =
         Files.readString(PROFESSOR_DASHBOARD_MAPPER_PATH)
             .toLowerCase()
@@ -200,7 +200,7 @@ class SchemaSqlTest {
 
   @Test
   void professorMessageMapperUsesCurrentSchemaAndCallableProcedure() throws IOException {
-    String schema = Files.readString(SCHEMA_PATH).toLowerCase().replaceAll("\\s+", " ");
+    String schema = readSchemaSql();
     String mapper =
         Files.readString(PROFESSOR_MESSAGE_MAPPER_PATH).toLowerCase().replaceAll("\\s+", " ");
 
@@ -229,7 +229,7 @@ class SchemaSqlTest {
 
   @Test
   void professorStudentMapperUsesCurrentSchemaAndCallableProcedure() throws IOException {
-    String schema = Files.readString(SCHEMA_PATH).toLowerCase().replaceAll("\\s+", " ");
+    String schema = readSchemaSql();
     String mapper =
         Files.readString(PROFESSOR_STUDENT_MAPPER_PATH).toLowerCase().replaceAll("\\s+", " ");
 
@@ -259,7 +259,7 @@ class SchemaSqlTest {
 
   @Test
   void professorStudentExportMapperUsesCurrentSchemaAndCallableProcedures() throws IOException {
-    String schema = Files.readString(SCHEMA_PATH).toLowerCase().replaceAll("\\s+", " ");
+    String schema = readSchemaSql();
     String mapper =
         Files.readString(PROFESSOR_STUDENT_EXPORT_MAPPER_PATH)
             .toLowerCase()
@@ -291,4 +291,20 @@ class SchemaSqlTest {
     assertThat(mapper).contains("call get_professor_export_students");
     assertThat(mapper).contains("jdbctype=cursor");
   }
+
+  private String readSchemaSql() throws IOException {
+    StringBuilder schema = new StringBuilder();
+    try (var files = Files.list(SCHEMA_INIT_DIR)) {
+      for (Path path :
+          files
+              .filter(path -> path.getFileName().toString().endsWith(".sql"))
+              .filter(path -> !path.getFileName().toString().equals("99-dummy-data.sql"))
+              .sorted()
+              .toList()) {
+        schema.append('\n').append(Files.readString(path));
+      }
+    }
+    return schema.toString().toLowerCase().replaceAll("\\s+", " ");
+  }
 }
+
