@@ -83,15 +83,11 @@ public class StudentCartService {
   @Transactional
   public StudentBulkEnrollResponse bulkEnroll(AuthenticatedUser currentUser, StudentBulkEnrollRequest request) {
     String studentId = currentUser.requireStudentId();
-    List<Long> cartItemIds = request == null ? null : request.cartItemIds();
-    Integer requestedCount = null;
-    if (cartItemIds == null || cartItemIds.isEmpty()) {
-      requestedCount = countCart(studentId);
-      cartItemIds = cartMapper.findCartItems(studentId).stream().map(StudentCartItem::getCartItemId).toList();
-    }
+    List<StudentCartItem> cartItems = cartMapper.findCartItems(studentId);
+    List<String> courseIds = selectedCourseIds(request, cartItems);
     Map<String, Object> params = new HashMap<>();
     params.put("studentId", studentId);
-    params.put("cartItemIdsCsv", toCsv(cartItemIds));
+    params.put("courseIdsCsv", toCsv(courseIds));
     cartMapper.callEnrollFromCart(params);
     List<Map<String, Object>> resultRows = mapList(params.get("results"));
     Map<String, Object> summaryRow = firstMap(params.get("summary"));
@@ -99,14 +95,31 @@ public class StudentCartService {
         resultRows.stream()
             .map(row -> new StudentBulkEnrollResponse.Result(
                 stringValue(row.get("cartItemId")),
+                stringValue(row.get("courseId")),
                 intValue(row.get("success")) == 1,
                 stringValue(row.get("message")),
                 stringValue(row.get("code"))))
             .toList(),
         new StudentBulkEnrollResponse.Summary(
-            requestedCount == null ? intValue(summaryRow.get("total")) : requestedCount,
+            intValue(summaryRow.get("total")),
             intValue(summaryRow.get("success")),
             intValue(summaryRow.get("failed"))));
+  }
+
+  private List<String> selectedCourseIds(StudentBulkEnrollRequest request, List<StudentCartItem> cartItems) {
+    if (request != null && request.courseIds() != null && !request.courseIds().isEmpty()) {
+      return request.courseIds().stream()
+          .filter(value -> value != null && !value.trim().isEmpty())
+          .map(String::trim)
+          .toList();
+    }
+    if (request != null && request.cartItemIds() != null && !request.cartItemIds().isEmpty()) {
+      return cartItems.stream()
+          .filter(item -> request.cartItemIds().contains(item.getCartItemId()))
+          .map(StudentCartItem::getCourseId)
+          .toList();
+    }
+    return cartItems.stream().map(StudentCartItem::getCourseId).toList();
   }
 
   private String normalizeDivision(String division) {
@@ -128,7 +141,7 @@ public class StudentCartService {
     return intValue(params.get("count"));
   }
 
-  private String toCsv(List<Long> values) {
+  private String toCsv(List<?> values) {
     return values.stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse("");
   }
 
