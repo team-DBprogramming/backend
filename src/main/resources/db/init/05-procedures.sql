@@ -1130,7 +1130,28 @@ BEGIN
     END IF;
 
     --------------------------------------------------
-    -- 6. 수강신청
+    -- 6. 같은 학기에 드랍했던 과목 재신청
+    -- unique key(s_id, c_id, e_year, e_semester)를 피하기 위해
+    -- 새 row를 만들지 않고 기존 DROPPED row를 되살린다.
+    --------------------------------------------------
+    UPDATE enroll
+    SET c_no = nCourseIdNo,
+        e_date = SYSTIMESTAMP,
+        e_status = 'ENROLLED',
+        e_drop_date = NULL
+    WHERE s_id = sStudentId
+      AND c_id = sCourseId
+      AND e_year = nYear
+      AND e_semester = nSemester
+      AND e_status = 'DROPPED';
+
+    IF SQL%ROWCOUNT > 0 THEN
+        result := 'ENROLL_SUCCESS';
+        RETURN;
+    END IF;
+
+    --------------------------------------------------
+    -- 7. 수강신청
     --------------------------------------------------
     INSERT INTO enroll (
         s_id,
@@ -1508,10 +1529,29 @@ END;
 BEGIN
     EXECUTE IMMEDIATE '
         CREATE GLOBAL TEMPORARY TABLE bulk_enroll_result_temp (
-            cart_item_id NUMBER NOT NULL,
+            cart_item_id NUMBER,
+            course_id    VARCHAR2(10),
             success      NUMBER(1) NOT NULL,
             message      VARCHAR2(200),
             code         VARCHAR2(100)
+        )
+        ON COMMIT DELETE ROWS
+    ';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -955 THEN
+            RAISE;
+        END IF;
+END;
+/
+
+------------------------------------------------------------
+-- 일괄 수강신청 선택 강의 임시 저장 테이블
+------------------------------------------------------------
+BEGIN
+    EXECUTE IMMEDIATE '
+        CREATE GLOBAL TEMPORARY TABLE bulk_enroll_course_temp (
+            course_id VARCHAR2(10) NOT NULL
         )
         ON COMMIT DELETE ROWS
     ';
@@ -1935,21 +1975,29 @@ END;
 
 ------------------------------------------------------------
 -- 장바구니 선택 항목 일괄 수강신청
--- p_cart_ids_csv 예: '1,3,5'
+-- p_course_ids_csv 예: 'CSE4091,CSE4092,GEN2100'
 -- 성공 항목은 장바구니에서 삭제, 실패 항목은 유지
 ------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE ENROLL_FROM_CART(
-    p_s_id         IN cart_item.s_id%TYPE,
-    p_cart_ids_csv IN VARCHAR2,
-    p_results      OUT SYS_REFCURSOR,
-    p_summary      OUT SYS_REFCURSOR
+    p_s_id           IN cart_item.s_id%TYPE,
+    p_course_ids_csv IN VARCHAR2,
+    p_results        OUT SYS_REFCURSOR,
+    p_summary        OUT SYS_REFCURSOR
 )
 IS
     v_enroll_result VARCHAR2(100);
     v_message       VARCHAR2(200);
     v_success       NUMBER(1);
+    v_count         NUMBER;
+    v_error_code    VARCHAR2(100);
 BEGIN
     DELETE FROM bulk_enroll_result_temp;
+    DELETE FROM bulk_enroll_course_temp;
+
+    INSERT INTO bulk_enroll_course_temp (course_id)
+    SELECT DISTINCT TRIM(REGEXP_SUBSTR(p_course_ids_csv, '[^,]+', 1, LEVEL))
+    FROM dual
+    CONNECT BY REGEXP_SUBSTR(p_course_ids_csv, '[^,]+', 1, LEVEL) IS NOT NULL;
 
     FOR cart_rec IN (
         SELECT
@@ -1957,22 +2005,9 @@ BEGIN
             ci.c_id,
             ci.c_no
         FROM cart_item ci
+        JOIN bulk_enroll_course_temp req
+          ON req.course_id = ci.c_id
         WHERE ci.s_id = p_s_id
-          AND ci.cart_id IN (
-              SELECT TO_NUMBER(TRIM(REGEXP_SUBSTR(
-                         p_cart_ids_csv,
-                         '[^,]+',
-                         1,
-                         LEVEL
-                     )))
-              FROM dual
-              CONNECT BY REGEXP_SUBSTR(
-                             p_cart_ids_csv,
-                             '[^,]+',
-                             1,
-                             LEVEL
-                         ) IS NOT NULL
-          )
         ORDER BY ci.cart_id
     )
     LOOP
@@ -2014,62 +2049,68 @@ BEGIN
 
         INSERT INTO bulk_enroll_result_temp (
             cart_item_id,
+            course_id,
             success,
             message,
             code
         )
         VALUES (
             cart_rec.cart_id,
+            cart_rec.c_id,
             v_success,
             v_message,
             v_enroll_result
         );
     END LOOP;
 
-    -- 요청 ID가 존재하지 않거나 다른 학생 소유인 경우
-    FOR requested_id IN (
-        SELECT TO_NUMBER(TRIM(REGEXP_SUBSTR(
-                   p_cart_ids_csv,
-                   '[^,]+',
-                   1,
-                   LEVEL
-               ))) AS cart_id
-        FROM dual
-        CONNECT BY REGEXP_SUBSTR(
-                       p_cart_ids_csv,
-                       '[^,]+',
-                       1,
-                       LEVEL
-                   ) IS NOT NULL
+    -- 요청 강의가 장바구니에 없거나 다른 학생 소유인 경우
+    FOR requested_course IN (
+        SELECT course_id
+        FROM bulk_enroll_course_temp
     )
     LOOP
-        INSERT INTO bulk_enroll_result_temp (
-            cart_item_id,
-            success,
-            message,
-            code
-        )
-        SELECT
-            requested_id.cart_id,
-            0,
-            '장바구니 항목을 찾을 수 없습니다.',
-            'CART_ITEM_NOT_FOUND'
+        SELECT COUNT(*)
+        INTO v_count
         FROM dual
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM bulk_enroll_result_temp br
-            WHERE br.cart_item_id = requested_id.cart_id
-        );
+        WHERE EXISTS (
+                  SELECT 1
+                  FROM bulk_enroll_result_temp br
+                  WHERE br.course_id = requested_course.course_id
+              )
+           OR EXISTS (
+                  SELECT 1
+                  FROM cart_item ci
+                  WHERE ci.s_id = p_s_id
+                    AND ci.c_id = requested_course.course_id
+              );
+
+        IF v_count = 0 THEN
+            INSERT INTO bulk_enroll_result_temp (
+                cart_item_id,
+                course_id,
+                success,
+                message,
+                code
+            )
+            VALUES (
+                NULL,
+                requested_course.course_id,
+                0,
+                '장바구니에서 선택한 강의를 찾을 수 없습니다.',
+                'CART_ITEM_NOT_FOUND'
+            );
+        END IF;
     END LOOP;
 
     OPEN p_results FOR
         SELECT
             TO_CHAR(cart_item_id) AS cart_item_id,
+            course_id,
             success,
             message,
             code
         FROM bulk_enroll_result_temp
-        ORDER BY cart_item_id;
+        ORDER BY course_id, cart_item_id;
 
     OPEN p_summary FOR
         SELECT
@@ -2080,24 +2121,29 @@ BEGIN
 
 EXCEPTION
     WHEN OTHERS THEN
+        v_error_code := 'SQLCODE=' || SQLCODE;
+
         DELETE FROM bulk_enroll_result_temp;
 
         INSERT INTO bulk_enroll_result_temp (
             cart_item_id,
+            course_id,
             success,
             message,
             code
         )
         VALUES (
             -1,
+            NULL,
             0,
             '일괄 수강신청 처리 중 오류가 발생했습니다.',
-            'SQLCODE=' || SQLCODE
+            v_error_code
         );
 
         OPEN p_results FOR
             SELECT
                 TO_CHAR(cart_item_id) AS cart_item_id,
+                course_id,
                 success,
                 message,
                 code
