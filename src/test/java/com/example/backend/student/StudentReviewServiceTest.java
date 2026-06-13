@@ -56,6 +56,14 @@ class StudentReviewServiceTest {
   }
 
   @Test
+  void getReviewsUsesRequestedPastSemester() {
+    reviewService.getReviews(studentUser(), "2024-2");
+
+    assertThat(reviewMapper.requestedYear).isEqualTo(2024);
+    assertThat(reviewMapper.requestedSemester).isEqualTo(2);
+  }
+
+  @Test
   void submitReviewThrowsWhenEnrollmentDoesNotExist() {
     reviewMapper.insertReviewResult = "ENROLLMENT_NOT_FOUND";
 

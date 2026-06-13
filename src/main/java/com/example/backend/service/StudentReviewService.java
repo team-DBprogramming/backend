@@ -31,7 +31,7 @@ public class StudentReviewService {
   @Transactional(readOnly = true)
   public StudentReviewListResponse getReviews(AuthenticatedUser currentUser, String semester) {
     String studentId = currentUser.requireStudentId();
-    Semester targetSemester = SemesterUtils.current(LocalDate.now(clock));
+    Semester targetSemester = SemesterUtils.parseOrCurrent(semester, LocalDate.now(clock));
     List<StudentReviewListResponse.Course> courses =
         reviewMapper.findReviews(studentId, targetSemester.year(), targetSemester.semester()).stream()
             .map(

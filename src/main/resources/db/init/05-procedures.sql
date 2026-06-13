@@ -2178,8 +2178,6 @@ IS
     v_e_id        enroll.e_id%TYPE;
     v_difficulty  review.difficulty%TYPE;
     v_created_at  review.created_at%TYPE;
-    v_year        NUMBER;
-    v_semester    NUMBER;
 BEGIN
     p_review_id := NULL;
     p_submitted_at := NULL;
@@ -2199,18 +2197,15 @@ BEGIN
         v_difficulty := 'MEDIUM';
     END IF;
 
-    v_year := Date2EnrollYear(SYSDATE);
-    v_semester := Date2EnrollSemester(SYSDATE);
-
     SELECT e.e_id
     INTO v_e_id
     FROM enroll e
     WHERE e.s_id = p_s_id
       AND e.c_id = p_c_id
-      AND e.e_year = v_year
-      AND e.e_semester = v_semester
       AND e.e_status IN ('ENROLLED', 'COMPLETED')
-    ORDER BY e.e_date DESC
+    ORDER BY e.e_year DESC,
+             e.e_semester DESC,
+             e.e_date DESC
     FETCH FIRST 1 ROW ONLY;
 
     INSERT INTO review (
