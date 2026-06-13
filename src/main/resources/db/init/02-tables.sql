@@ -54,8 +54,8 @@ create table user_account (
                                                              1 ) )
 );
 
-comment on table user_account is '?듯빀 ?ъ슜??怨꾩젙';
-comment on column user_account.login_id is '?숇쾲/?щ쾲';
+comment on table user_account is '통합 사용자 계정';
+comment on column user_account.login_id is '학번/사번';
 
 create index idx_user_account_role on
    user_account (
@@ -87,10 +87,10 @@ create table lecture (
       references professor ( p_id ),
    constraint chk_lecture_credit check ( credit between 1 and 6 ),
    constraint chk_lecture_course_type
-      check ( course_type in ( '?꾧났?꾩닔',
-                               '?꾧났?좏깮',
-                               '援먯뼇?꾩닔',
-                               '援먯뼇?좏깮' ) ),
+      check ( course_type in ( '전공필수',
+                               '전공선택',
+                               '교양필수',
+                               '교양선택' ) ),
    constraint chk_lecture_target_year check ( target_year between 1 and 6 ),
    constraint chk_lecture_is_english check ( is_english in ( 0,
                                                              1 ) ),
